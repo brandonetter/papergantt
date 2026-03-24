@@ -1,6 +1,15 @@
 import { vi } from 'vitest';
 import { normalizeConfig } from '@gantt/gantt-core';
-import type { FrameScene, GanttExportedTask, GanttScene, GanttPlugin, GanttTask } from '@gantt/gantt-core';
+import type {
+  FrameScene,
+  GanttExportedTask,
+  GanttInteractionState,
+  GanttPlugin,
+  GanttSafeApi,
+  GanttScene,
+  GanttTask,
+  PluginSelectionState,
+} from '@gantt/gantt-core';
 
 const loadPluginsMock = vi.hoisted(() => vi.fn());
 
@@ -13,35 +22,45 @@ import { PluginRuntime } from '../packages/gantt-core/src/plugin-runtime';
 function makeHostApi(configInput = {}) {
   const logs: Array<{ level: 'info' | 'warn' | 'error'; message: string }> = [];
   const config = normalizeConfig(configInput);
+  const safeApi: GanttSafeApi = {
+    registerTaskStyleResolver: () => () => undefined,
+    registerOverlay: () => () => undefined,
+    registerUiCommand: () => () => undefined,
+    registerModule: () => () => undefined,
+    registerTaskEditResolver: () => () => undefined,
+    getSceneSnapshot: () => ({ tasks: [], rowLabels: [], timelineStart: 0, timelineEnd: 0 }),
+    getTask: () => null,
+    getTasks: () => [] as GanttTask[],
+    addTask: () => ({ id: 'added', rowIndex: 0, start: 0, end: 1, label: 'Added Task' } as GanttTask),
+    updateTask: () => ({ id: 'updated', rowIndex: 0, start: 0, end: 1, label: 'Updated Task' } as GanttTask),
+    deleteTask: () => ({ id: 'deleted', rowIndex: 0, start: 0, end: 1, label: 'Deleted Task' } as GanttTask),
+    deleteTasks: () => [] as GanttTask[],
+    importTasks: () => ({ added: [], updated: [] }),
+    exportTasks: () => [] as GanttExportedTask[],
+    getCameraSnapshot: () => ({ scrollX: 0, scrollY: 0, zoomX: 1, zoomY: 1, viewportWidth: 100, viewportHeight: 100 }),
+    getSelection: () => ({
+      selectedTask: null,
+      selectedTasks: [],
+      hoveredTask: null,
+      selectedDependency: null,
+      hoveredDependency: null,
+    }),
+    setSelectionByTaskId: () => undefined,
+    setSelectionByTaskIds: () => undefined,
+    getInteractionState: () => ({ mode: 'view' as const, activeEdit: null }),
+    setInteractionMode: () => undefined,
+    logger: {
+      info: () => undefined,
+      warn: () => undefined,
+      error: () => undefined,
+    },
+  };
 
   return {
     logs,
     api: {
       config,
-      safeApi: {
-        registerTaskStyleResolver: () => () => undefined,
-        registerOverlay: () => () => undefined,
-        registerUiCommand: () => () => undefined,
-        registerModule: () => () => undefined,
-        registerTaskEditResolver: () => () => undefined,
-        getSceneSnapshot: () => ({ tasks: [], rowLabels: [], timelineStart: 0, timelineEnd: 0 }),
-        getTask: () => null,
-        getTasks: () => [] as GanttTask[],
-        addTask: () => ({ id: 'added', rowIndex: 0, start: 0, end: 1, label: 'Added Task' } as GanttTask),
-        updateTask: () => ({ id: 'updated', rowIndex: 0, start: 0, end: 1, label: 'Updated Task' } as GanttTask),
-        deleteTask: () => ({ id: 'deleted', rowIndex: 0, start: 0, end: 1, label: 'Deleted Task' } as GanttTask),
-        deleteTasks: () => [] as GanttTask[],
-        importTasks: () => ({ added: [], updated: [] }),
-        exportTasks: () => [] as GanttExportedTask[],
-        getCameraSnapshot: () => ({ scrollX: 0, scrollY: 0, zoomX: 1, zoomY: 1, viewportWidth: 100, viewportHeight: 100 }),
-        getInteractionState: () => ({ mode: 'view' as const, activeEdit: null }),
-        setInteractionMode: () => undefined,
-        logger: {
-          info: () => undefined,
-          warn: () => undefined,
-          error: () => undefined,
-        },
-      },
+      safeApi,
       advancedApi: {
         requestRender: () => undefined,
         getInternals: () => ({ index: {} as never, renderer: {}, gl: {} as WebGL2RenderingContext }),
@@ -289,6 +308,85 @@ describe('plugin runtime', () => {
     expect(updateTask).toHaveBeenCalledWith('task-1', { rowIndex: 2 });
     expect(deleteTask).toHaveBeenCalledWith('task-1');
     expect(exportTasks).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes multi-selection and grouped edit state to safe plugins', async () => {
+    const getSelection = vi.fn((): Readonly<PluginSelectionState> => ({
+      selectedTask: { id: 'task-2', rowIndex: 1, start: 12, end: 16, label: 'Task 2' } as GanttTask,
+      selectedTasks: [
+        { id: 'task-2', rowIndex: 1, start: 12, end: 16, label: 'Task 2' },
+        { id: 'task-1', rowIndex: 0, start: 8, end: 11, label: 'Task 1' },
+      ] as GanttTask[],
+      hoveredTask: null,
+      selectedDependency: null,
+      hoveredDependency: null,
+    }));
+    const setSelectionByTaskId = vi.fn();
+    const setSelectionByTaskIds = vi.fn();
+    const getInteractionState = vi.fn((): Readonly<GanttInteractionState> => ({
+      mode: 'edit' as const,
+      activeEdit: {
+        taskId: 'task-2',
+        taskIds: ['task-2', 'task-1'],
+        operation: 'move' as const,
+        originalTask: { id: 'task-2', rowIndex: 1, start: 12, end: 16, label: 'Task 2' },
+        originalTasks: [
+          { id: 'task-2', rowIndex: 1, start: 12, end: 16, label: 'Task 2' },
+          { id: 'task-1', rowIndex: 0, start: 8, end: 11, label: 'Task 1' },
+        ],
+        draftTask: { id: 'task-2', rowIndex: 2, start: 14, end: 18, label: 'Task 2' },
+        draftTasks: [
+          { id: 'task-2', rowIndex: 2, start: 14, end: 18, label: 'Task 2' },
+          { id: 'task-1', rowIndex: 1, start: 10, end: 13, label: 'Task 1' },
+        ],
+        status: 'preview' as const,
+      },
+    }));
+
+    const runtimePlugin: GanttPlugin = {
+      meta: {
+        id: 'runtime-selection-safe-plugin',
+        version: '1.3.0',
+        apiRange: '^1.3.0',
+      },
+      create: (context) => ({
+        onInit: () => {
+          context.safe.getSelection();
+          context.safe.getInteractionState();
+          context.safe.setSelectionByTaskIds(['task-1', 'task-2'], 'task-2');
+          context.safe.setSelectionByTaskId(null);
+        },
+      }),
+    };
+
+    loadPluginsMock.mockResolvedValue([
+      {
+        definition: runtimePlugin,
+        config: {
+          source: { type: 'esm', url: 'https://example.com/runtime-selection-safe.mjs' },
+        },
+      },
+    ]);
+
+    const { api } = makeHostApi();
+    api.safeApi.getSelection = getSelection;
+    api.safeApi.setSelectionByTaskId = setSelectionByTaskId;
+    api.safeApi.setSelectionByTaskIds = setSelectionByTaskIds;
+    api.safeApi.getInteractionState = getInteractionState;
+
+    const runtime = new PluginRuntime(api);
+    await runtime.load();
+    await runtime.init();
+
+    const observedSelection = getSelection.mock.results[0]?.value;
+    const observedInteraction = getInteractionState.mock.results[0]?.value;
+
+    expect(getSelection).toHaveBeenCalledTimes(1);
+    expect(setSelectionByTaskIds).toHaveBeenCalledWith(['task-1', 'task-2'], 'task-2');
+    expect(setSelectionByTaskId).toHaveBeenCalledWith(null);
+    expect(observedSelection?.selectedTasks.map((task: GanttTask) => task.id)).toEqual(['task-2', 'task-1']);
+    expect(observedInteraction?.activeEdit?.taskIds).toEqual(['task-2', 'task-1']);
+    expect(observedInteraction?.activeEdit?.draftTasks?.map((task: GanttTask) => task.id)).toEqual(['task-2', 'task-1']);
   });
 
   it('notifies edit mode and task edit lifecycle hooks in load order', async () => {

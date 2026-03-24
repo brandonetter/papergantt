@@ -38,11 +38,37 @@ function formatModeLabel(mode) {
   return 'View';
 }
 
+function formatSelectionLabel(selection) {
+  return Array.isArray(selection.selectedTasks) && selection.selectedTasks.length > 1
+    ? `Selected: ${selection.selectedTasks.length} tasks`
+    : selection.selectedTask
+      ? `Selected: ${selection.selectedTask.label}`
+      : selection.hoveredTask
+        ? `Hover: ${selection.hoveredTask.label}`
+        : 'No task selected';
+}
+
+function formatEditStateLabel(activeEdit) {
+  if (!activeEdit) {
+    return 'Edit lifecycle idle';
+  }
+
+  const taskCount = Array.isArray(activeEdit.taskIds) && activeEdit.taskIds.length > 0
+    ? activeEdit.taskIds.length
+    : Array.isArray(activeEdit.draftTasks) && activeEdit.draftTasks.length > 0
+      ? activeEdit.draftTasks.length
+      : 1;
+
+  return taskCount > 1
+    ? `${activeEdit.status}: ${taskCount} tasks`
+    : `${activeEdit.status}: ${activeEdit.draftTask.label}`;
+}
+
 const safePlugin = {
   meta: {
     id: 'demo-safe-style',
-    version: '1.1.0',
-    apiRange: '^1.0.0',
+    version: '1.2.0',
+    apiRange: '^1.3.0',
   },
   create(context) {
     const options = readOptions(context.pluginConfig.options);
@@ -135,17 +161,14 @@ const safePlugin = {
           }),
         );
 
-        modeLabel = `Mode: ${formatModeLabel(context.safe.getInteractionState().mode)}`;
+        const interaction = context.safe.getInteractionState();
+        selectionLabel = formatSelectionLabel(context.safe.getSelection());
+        modeLabel = `Mode: ${formatModeLabel(interaction.mode)}`;
+        editLabel = formatEditStateLabel(interaction.activeEdit);
       },
 
       onSelectionChange(selection) {
-        selectionLabel = Array.isArray(selection.selectedTasks) && selection.selectedTasks.length > 1
-          ? `Selected: ${selection.selectedTasks.length} tasks`
-          : selection.selectedTask
-            ? `Selected: ${selection.selectedTask.label}`
-            : selection.hoveredTask
-              ? `Hover: ${selection.hoveredTask.label}`
-              : 'No task selected';
+        selectionLabel = formatSelectionLabel(selection);
         renderBadge();
       },
 

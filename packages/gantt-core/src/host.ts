@@ -544,6 +544,9 @@ class GanttHostImpl implements GanttHostController {
         importTasks: (inputs, options) => this.importTasks(inputs, options),
         exportTasks: () => this.exportTasks(),
         getCameraSnapshot: () => this.camera,
+        getSelection: () => this.getSelection(),
+        setSelectionByTaskId: (taskId) => this.setSelectionByTaskId(taskId),
+        setSelectionByTaskIds: (taskIds, primaryTaskId) => this.setSelectionByTaskIds(taskIds, primaryTaskId),
         getInteractionState: () => this.getInteractionState(),
         setInteractionMode: (mode) => this.setInteractionMode(mode),
         logger: {
@@ -755,16 +758,27 @@ class GanttHostImpl implements GanttHostController {
     return cloneRuntimeTask(task);
   }
 
-  private cloneActiveEdit(edit: GanttTaskEditState | null): GanttTaskEditState | null {
+  private cloneActiveEdit(
+    edit: GanttTaskEditState | null,
+    batch: ActiveEditBatchState | null = this.activeEditBatch,
+  ): GanttTaskEditState | null {
     if (!edit) {
       return null;
     }
 
+    const originalTasks = (batch?.originalTasks ?? edit.originalTasks ?? [edit.originalTask])
+      .map((task) => this.cloneTask(task));
+    const draftTasks = (batch?.draftTasks ?? edit.draftTasks ?? [edit.draftTask])
+      .map((task) => this.cloneTask(task));
+
     return {
       taskId: edit.taskId,
+      taskIds: edit.taskIds?.slice() ?? draftTasks.map((task) => task.id),
       operation: edit.operation,
       originalTask: this.cloneTask(edit.originalTask),
+      originalTasks,
       draftTask: this.cloneTask(edit.draftTask),
+      draftTasks,
       status: edit.status,
     };
   }

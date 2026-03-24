@@ -12,7 +12,7 @@ import type {
 } from './core';
 import type { SampleOptions } from './data';
 
-export const GANTT_PLUGIN_API_VERSION = '1.2.0';
+export const GANTT_PLUGIN_API_VERSION = '1.3.0';
 
 export type TaskStyleOverride = {
   fill?: [number, number, number, number];
@@ -88,9 +88,12 @@ export type GanttTaskEditEvent = {
 
 export type GanttTaskEditState = {
   taskId: string;
+  taskIds?: string[];
   operation: GanttTaskEditOperation;
   originalTask: GanttTask;
+  originalTasks?: GanttTask[];
   draftTask: GanttTask;
+  draftTasks?: GanttTask[];
   status: GanttTaskEditStatus;
 };
 
@@ -175,6 +178,9 @@ export type GanttSafeApi = {
   ) => { added: GanttTask[]; updated: GanttTask[] };
   exportTasks: () => GanttExportedTask[];
   getCameraSnapshot: () => Readonly<CameraState>;
+  getSelection: () => Readonly<PluginSelectionState>;
+  setSelectionByTaskId: (taskId: string | null) => void;
+  setSelectionByTaskIds: (taskIds: string[], primaryTaskId?: string | null) => void;
   getInteractionState: () => Readonly<GanttInteractionState>;
   setInteractionMode: (mode: GanttInteractionMode) => void;
   logger: {

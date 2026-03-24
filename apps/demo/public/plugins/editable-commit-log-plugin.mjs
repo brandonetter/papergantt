@@ -47,6 +47,10 @@ function summarizeTask(task) {
   };
 }
 
+function summarizeTasks(tasks) {
+  return Array.isArray(tasks) ? tasks.map((task) => summarizeTask(task)) : [];
+}
+
 function diffTask(before, after) {
   const changes = {};
   const beforeDuration = before.end - before.start;
@@ -168,10 +172,13 @@ function summarizeInteractionState(state) {
     activeEdit: state.activeEdit
       ? {
           taskId: state.activeEdit.taskId,
+          taskIds: Array.isArray(state.activeEdit.taskIds) ? state.activeEdit.taskIds.slice() : [state.activeEdit.taskId],
           operation: state.activeEdit.operation,
           status: state.activeEdit.status,
           originalTask: summarizeTask(state.activeEdit.originalTask),
+          originalTasks: summarizeTasks(state.activeEdit.originalTasks),
           draftTask: summarizeTask(state.activeEdit.draftTask),
+          draftTasks: summarizeTasks(state.activeEdit.draftTasks),
         }
       : null,
   };
@@ -180,8 +187,8 @@ function summarizeInteractionState(state) {
 const editableCommitLogPlugin = {
   meta: {
     id: 'demo-editable-commit-log',
-    version: '1.1.0',
-    apiRange: '^1.1.0',
+    version: '1.2.0',
+    apiRange: '^1.3.0',
   },
 
   create(context) {

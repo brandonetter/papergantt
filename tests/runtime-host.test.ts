@@ -384,6 +384,10 @@ describe('runtime task host controller', () => {
     expect(previewEvents?.map((event) => event.taskId)).toEqual(['a', 'b']);
     expect(controller.getSelection().selectedTasks.map((task) => task.id)).toEqual(['a', 'b']);
     expect(controller.getInteractionState().activeEdit?.taskId).toBe('a');
+    expect(controller.getInteractionState().activeEdit?.taskIds).toEqual(['a', 'b']);
+    expect(controller.getInteractionState().activeEdit?.originalTasks?.map((task) => task.id)).toEqual(['a', 'b']);
+    expect(controller.getInteractionState().activeEdit?.draftTasks?.map((task) => task.id)).toEqual(['a', 'b']);
+    expect(controller.getInteractionState().activeEdit?.draftTasks?.map((task) => task.rowIndex)).toEqual([1, 2]);
 
     const committed = await controller.commitTaskEdits(previewEvents ?? null);
 
