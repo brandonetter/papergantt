@@ -74,4 +74,37 @@ describe('config normalization', () => {
       700: '/fonts/atkinson-hyperlegible-700-msdf.json',
     });
   });
+
+  it('normalizes display config colors and nested styling overrides', () => {
+    const config = normalizeConfig({
+      display: {
+        canvasBackground: '#f4eee3',
+        rows: {
+          evenFill: [255, 250, 241],
+          separatorColor: 'rgba(112, 91, 64, 0.18)',
+          separatorStyle: 'dashed',
+        },
+        tasks: {
+          barRadiusPx: 9,
+          textColor: '#1d1b19',
+        },
+        header: {
+          textSizePx: 16,
+        },
+        dependencies: {
+          showArrowheads: false,
+          cornerRadiusPx: 12,
+        },
+      },
+    });
+
+    expect(config.display.canvasBackground).toEqual([0.9568627450980393, 0.9333333333333333, 0.8901960784313725, 1]);
+    expect(config.display.rows.evenFill).toEqual([1, 0.9803921568627451, 0.9450980392156862, 1]);
+    expect(config.display.rows.separatorStyle).toBe('dashed');
+    expect(config.display.tasks.barRadiusPx).toBe(9);
+    expect(config.display.tasks.textColor).toEqual([0.11372549019607843, 0.10588235294117647, 0.09803921568627451, 1]);
+    expect(config.display.header.textSizePx).toBe(16);
+    expect(config.display.dependencies.showArrowheads).toBe(false);
+    expect(config.display.dependencies.cornerRadiusPx).toBe(12);
+  });
 });

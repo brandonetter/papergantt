@@ -1,4 +1,4 @@
-import { buildFrame, buildTaskIndex, createCamera, pickTaskAtPoint } from '@gantt/gantt-core';
+import { DEFAULT_DISPLAY_OPTIONS, buildFrame, buildTaskIndex, createCamera, pickTaskAtPoint } from '@gantt/gantt-core';
 import { TextLayoutEngine } from '@gantt/gantt-core';
 import { makeTestAtlas } from './helpers';
 
@@ -216,6 +216,76 @@ describe('frame assembly', () => {
     });
 
     expect(pickedOnRightHalf?.id).toBe('a');
+  });
+
+  it('applies display styling overrides to grid, task text, and dependencies', () => {
+    const atlas = makeTestAtlas();
+    const layout = new TextLayoutEngine(atlas);
+    const scene = {
+      rowLabels: ['Row 1', 'Row 2'],
+      timelineStart: 0,
+      timelineEnd: 100,
+      tasks: [
+        { id: 'a', rowIndex: 0, start: 10, end: 60, label: 'Task A' },
+        { id: 'b', rowIndex: 1, start: 70, end: 90, label: 'Task B', dependencies: ['a'] },
+      ],
+    };
+    const index = buildTaskIndex(scene.tasks);
+    const display = {
+      ...DEFAULT_DISPLAY_OPTIONS,
+      grid: {
+        ...DEFAULT_DISPLAY_OPTIONS.grid,
+        color: [0.2, 0.3, 0.4, 0.5] as [number, number, number, number],
+        thickness: 2,
+      },
+      tasks: {
+        ...DEFAULT_DISPLAY_OPTIONS.tasks,
+        textColor: [0.15, 0.2, 0.25, 0.9] as [number, number, number, number],
+        textShadowColor: [0.95, 0.95, 0.95, 0.4] as [number, number, number, number],
+        barRadiusPx: 6,
+      },
+      header: {
+        ...DEFAULT_DISPLAY_OPTIONS.header,
+        textSizePx: 18,
+      },
+      dependencies: {
+        ...DEFAULT_DISPLAY_OPTIONS.dependencies,
+        color: [0.6, 0.2, 0.1, 1] as [number, number, number, number],
+        thickness: 3,
+        showArrowheads: false,
+      },
+    };
+    const frame = buildFrame(
+      scene,
+      index,
+      { ...createCamera(800, 280), zoomX: 2, zoomY: 1, scrollX: 0, scrollY: 0 },
+      atlas,
+      layout,
+      {
+        selectedTaskId: null,
+        hoveredTaskId: null,
+        selectedDependencyId: null,
+        hoveredDependencyId: null,
+      },
+      {
+        rowPitch: 30,
+        barHeight: 16,
+        milestoneSize: 12,
+        headerHeight: 40,
+      },
+      {},
+      display,
+    );
+
+    const glyphStride = 12;
+    const labelGlyphOffset = 'Task A'.length * glyphStride;
+
+    expect(frame.backgroundLines.view()[8]).toBeCloseTo(2);
+    expect(frame.glyphs.view()[labelGlyphOffset + 8]).toBeCloseTo(0.15);
+    expect(frame.glyphs.view()[labelGlyphOffset + 9]).toBeCloseTo(0.2);
+    expect(frame.glyphs.view()[labelGlyphOffset + 10]).toBeCloseTo(0.25);
+    expect(frame.dependencyLines.view()[8]).toBeCloseTo(3);
+    expect(frame.dependencyPaths[0]?.segments.length).toBeLessThan(8);
   });
 
   it('fades task label glyph alpha under the header and keeps fully above labels dimmed', () => {

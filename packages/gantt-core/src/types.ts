@@ -2,9 +2,11 @@ import type {
   CameraState,
   ViewWindow,
   FrameOptions,
+  GanttDisplayConfig,
   FrameScene,
   GanttScene,
   GanttTask,
+  NormalizedGanttDisplayConfig,
   TaskIndex,
   DependencyPath,
 } from './core';
@@ -190,6 +192,7 @@ export type GanttFontConfig = {
 export type GanttConfig = {
   data?: DataConfig;
   render?: Partial<FrameOptions>;
+  display?: GanttDisplayConfig;
   ui?: UiConfig;
   container?: GanttContainerConfig;
   font?: GanttFontConfig;
@@ -214,6 +217,7 @@ export type NormalizedGanttContainerConfig = {
 export type NormalizedGanttConfig = {
   data: DataConfig;
   render: FrameOptions;
+  display: NormalizedGanttDisplayConfig;
   ui: Required<UiConfig>;
   container: NormalizedGanttContainerConfig;
   font: GanttFontConfig;

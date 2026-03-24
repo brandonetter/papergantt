@@ -1,4 +1,4 @@
-import type { CameraState, FrameScene } from './core';
+import type { CameraState, FrameScene, NormalizedGanttDisplayConfig } from './core';
 import type { FontAtlas } from './font';
 
 const SOLID_VERTEX = `#version 300 es
@@ -7,7 +7,7 @@ precision highp float;
 layout(location = 0) in vec2 aCorner;
 layout(location = 1) in vec4 aRect;
 layout(location = 2) in vec4 aColor;
-layout(location = 3) in vec2 aParams;
+layout(location = 3) in vec4 aParams;
 
 uniform vec2 uScroll;
 uniform vec2 uZoom;
@@ -15,7 +15,8 @@ uniform vec2 uViewport;
 
 out vec4 vColor;
 out vec2 vLocal;
-out vec2 vParams;
+out vec4 vParams;
+out vec2 vSizePx;
 
 void main() {
   vec2 world = aRect.xy + aCorner * aRect.zw;
@@ -28,6 +29,7 @@ void main() {
   vColor = aColor;
   vLocal = aCorner;
   vParams = aParams;
+  vSizePx = max(aRect.zw * uZoom, vec2(0.0001));
 }
 `;
 
@@ -36,19 +38,34 @@ precision highp float;
 
 in vec4 vColor;
 in vec2 vLocal;
-in vec2 vParams;
+in vec4 vParams;
+in vec2 vSizePx;
 
 out vec4 outColor;
 
 void main() {
   float kind = vParams.x;
   float emphasis = vParams.y;
+  float radiusPx = vParams.z;
+  float alpha = vColor.a;
 
   if (kind > 0.5) {
     vec2 p = vLocal * 2.0 - 1.0;
     if (abs(p.x) + abs(p.y) > 1.0) {
       discard;
     }
+  } else if (radiusPx > 0.0) {
+    float safeRadiusPx = min(radiusPx, 0.5 * min(vSizePx.x, vSizePx.y));
+    vec2 radiusUv = vec2(safeRadiusPx / vSizePx.x, safeRadiusPx / vSizePx.y);
+    vec2 innerMin = radiusUv;
+    vec2 innerMax = vec2(1.0) - radiusUv;
+    vec2 nearest = clamp(vLocal, innerMin, innerMax);
+    vec2 deltaPx = (vLocal - nearest) * vSizePx;
+    float outsideDistance = length(deltaPx) - safeRadiusPx;
+    if (outsideDistance > 1.0) {
+      discard;
+    }
+    alpha *= 1.0 - smoothstep(0.0, 1.0, max(0.0, outsideDistance));
   }
 
   float edge = min(min(vLocal.x, vLocal.y), min(1.0 - vLocal.x, 1.0 - vLocal.y));
@@ -59,7 +76,7 @@ void main() {
     fill = mix(fill, vec3(1.0), 0.12 * emphasis);
   }
 
-  outColor = vec4(fill, vColor.a);
+  outColor = vec4(fill, alpha);
 }
 `;
 
@@ -335,9 +352,9 @@ export class GanttRenderer {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, quad.ebo);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.solidBuffer);
-    setInstancedAttribute(gl, 1, 4, 40, 0);
-    setInstancedAttribute(gl, 2, 4, 40, 16);
-    setInstancedAttribute(gl, 3, 2, 40, 32);
+    setInstancedAttribute(gl, 1, 4, 48, 0);
+    setInstancedAttribute(gl, 2, 4, 48, 16);
+    setInstancedAttribute(gl, 3, 4, 48, 32);
     gl.bindVertexArray(null);
 
     gl.bindVertexArray(this.lineVao);
@@ -414,12 +431,22 @@ export class GanttRenderer {
     }
   }
 
-  render(frame: FrameScene, camera: CameraState, atlas: FontAtlas): void {
+  render(
+    frame: FrameScene,
+    camera: CameraState,
+    atlas: FontAtlas,
+    display: NormalizedGanttDisplayConfig,
+  ): void {
     const gl = this.gl;
     this.uploadAtlas(atlas);
 
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    gl.clearColor(0.05, 0.07, 0.1, 1.0);
+    gl.clearColor(
+      display.canvasBackground[0],
+      display.canvasBackground[1],
+      display.canvasBackground[2],
+      display.canvasBackground[3],
+    );
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     if (frame.backgroundSolids.count > 0) {

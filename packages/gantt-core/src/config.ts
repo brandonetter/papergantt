@@ -1,4 +1,11 @@
-import type { FrameOptions } from './core';
+import {
+  DEFAULT_DISPLAY_OPTIONS,
+  type FrameOptions,
+  type GanttColor,
+  type GanttColorInput,
+  type GanttDisplayConfig,
+  type NormalizedGanttDisplayConfig,
+} from './core';
 import { createSampleScene } from './data';
 import type {
   GanttConfig,
@@ -81,6 +88,161 @@ export const DEFAULT_CONTAINER_CONFIG: NormalizedGanttContainerConfig = {
     height: 56,
   },
 };
+
+function cloneColor(color: GanttColor): GanttColor {
+  return [color[0], color[1], color[2], color[3]];
+}
+
+function clonePalette(palette: GanttColor[]): GanttColor[] {
+  return palette.map((color) => cloneColor(color));
+}
+
+function normalizeRgbComponent(value: number): number {
+  return value > 1 ? value / 255 : value;
+}
+
+function normalizeAlphaComponent(value: number): number {
+  return value > 1 ? value / 255 : value;
+}
+
+function clampColorComponent(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function parseHexColor(input: string): GanttColor | null {
+  const hex = input.trim().replace(/^#/, '');
+  if (![3, 4, 6, 8].includes(hex.length)) {
+    return null;
+  }
+
+  const expanded = hex.length <= 4
+    ? hex.split('').map((char) => `${char}${char}`).join('')
+    : hex;
+  const hasAlpha = expanded.length === 8;
+  const r = Number.parseInt(expanded.slice(0, 2), 16);
+  const g = Number.parseInt(expanded.slice(2, 4), 16);
+  const b = Number.parseInt(expanded.slice(4, 6), 16);
+  const a = hasAlpha ? Number.parseInt(expanded.slice(6, 8), 16) : 255;
+
+  if ([r, g, b, a].some((value) => Number.isNaN(value))) {
+    return null;
+  }
+
+  return [r / 255, g / 255, b / 255, a / 255];
+}
+
+function parseRgbColor(input: string): GanttColor | null {
+  const match = input.trim().match(/^rgba?\((.+)\)$/i);
+  if (!match) {
+    return null;
+  }
+
+  const parts = match[1].split(',').map((part) => Number.parseFloat(part.trim()));
+  if (parts.length < 3 || parts.length > 4 || parts.some((part) => Number.isNaN(part))) {
+    return null;
+  }
+
+  return [
+    clampColorComponent(normalizeRgbComponent(parts[0])),
+    clampColorComponent(normalizeRgbComponent(parts[1])),
+    clampColorComponent(normalizeRgbComponent(parts[2])),
+    clampColorComponent(normalizeAlphaComponent(parts[3] ?? 1)),
+  ];
+}
+
+function normalizeColorInput(input: GanttColorInput | undefined, fallback: GanttColor): GanttColor {
+  if (input === undefined) {
+    return cloneColor(fallback);
+  }
+
+  if (Array.isArray(input)) {
+    if (input.length === 3) {
+      return [
+        clampColorComponent(normalizeRgbComponent(input[0])),
+        clampColorComponent(normalizeRgbComponent(input[1])),
+        clampColorComponent(normalizeRgbComponent(input[2])),
+        1,
+      ];
+    }
+
+    return [
+      clampColorComponent(normalizeRgbComponent(input[0])),
+      clampColorComponent(normalizeRgbComponent(input[1])),
+      clampColorComponent(normalizeRgbComponent(input[2])),
+      clampColorComponent(normalizeAlphaComponent(input[3])),
+    ];
+  }
+
+  const parsed = parseHexColor(input) ?? parseRgbColor(input);
+  if (!parsed) {
+    throw new Error(`Unsupported color value: ${input}`);
+  }
+  return parsed;
+}
+
+function mergeDisplayConfig(display: GanttDisplayConfig | undefined): NormalizedGanttDisplayConfig {
+  const defaults = DEFAULT_DISPLAY_OPTIONS;
+  return {
+    canvasBackground: normalizeColorInput(display?.canvasBackground, defaults.canvasBackground),
+    rows: {
+      evenFill: normalizeColorInput(display?.rows?.evenFill, defaults.rows.evenFill),
+      oddFill: normalizeColorInput(display?.rows?.oddFill, defaults.rows.oddFill),
+      separatorColor: normalizeColorInput(display?.rows?.separatorColor, defaults.rows.separatorColor),
+      separatorThickness: display?.rows?.separatorThickness ?? defaults.rows.separatorThickness,
+      separatorStyle: display?.rows?.separatorStyle ?? defaults.rows.separatorStyle,
+      separatorDashPx: display?.rows?.separatorDashPx ?? defaults.rows.separatorDashPx,
+      separatorGapPx: display?.rows?.separatorGapPx ?? defaults.rows.separatorGapPx,
+    },
+    grid: {
+      color: normalizeColorInput(display?.grid?.color, defaults.grid.color),
+      thickness: display?.grid?.thickness ?? defaults.grid.thickness,
+      style: display?.grid?.style ?? defaults.grid.style,
+      dashPx: display?.grid?.dashPx ?? defaults.grid.dashPx,
+      gapPx: display?.grid?.gapPx ?? defaults.grid.gapPx,
+    },
+    tasks: {
+      palette: display?.tasks?.palette
+        ? display.tasks.palette.map((color) => normalizeColorInput(color, defaults.tasks.palette[0]))
+        : clonePalette(defaults.tasks.palette),
+      defaultFill: display?.tasks?.defaultFill === undefined
+        ? defaults.tasks.defaultFill ? cloneColor(defaults.tasks.defaultFill) : null
+        : normalizeColorInput(display.tasks.defaultFill, defaults.tasks.palette[0]),
+      barRadiusPx: display?.tasks?.barRadiusPx ?? defaults.tasks.barRadiusPx,
+      textColor: normalizeColorInput(display?.tasks?.textColor, defaults.tasks.textColor),
+      textShadowColor: normalizeColorInput(display?.tasks?.textShadowColor, defaults.tasks.textShadowColor),
+      selectedOpacity: display?.tasks?.selectedOpacity ?? defaults.tasks.selectedOpacity,
+      hoveredOpacity: display?.tasks?.hoveredOpacity ?? defaults.tasks.hoveredOpacity,
+      idleOpacity: display?.tasks?.idleOpacity ?? defaults.tasks.idleOpacity,
+      selectedBoost: display?.tasks?.selectedBoost ?? defaults.tasks.selectedBoost,
+      hoveredBoost: display?.tasks?.hoveredBoost ?? defaults.tasks.hoveredBoost,
+    },
+    header: {
+      backgroundColor: normalizeColorInput(display?.header?.backgroundColor, defaults.header.backgroundColor),
+      borderColor: normalizeColorInput(display?.header?.borderColor, defaults.header.borderColor),
+      tickColor: normalizeColorInput(display?.header?.tickColor, defaults.header.tickColor),
+      tickHeightPx: display?.header?.tickHeightPx ?? defaults.header.tickHeightPx,
+      textColor: normalizeColorInput(display?.header?.textColor, defaults.header.textColor),
+      textSizePx: display?.header?.textSizePx ?? defaults.header.textSizePx,
+    },
+    dependencies: {
+      color: normalizeColorInput(display?.dependencies?.color, defaults.dependencies.color),
+      selectedColor: display?.dependencies?.selectedColor === undefined
+        ? defaults.dependencies.selectedColor ? cloneColor(defaults.dependencies.selectedColor) : null
+        : normalizeColorInput(display.dependencies.selectedColor, defaults.dependencies.color),
+      hoveredColor: display?.dependencies?.hoveredColor === undefined
+        ? defaults.dependencies.hoveredColor ? cloneColor(defaults.dependencies.hoveredColor) : null
+        : normalizeColorInput(display.dependencies.hoveredColor, defaults.dependencies.color),
+      thickness: display?.dependencies?.thickness ?? defaults.dependencies.thickness,
+      selectedThickness: display?.dependencies?.selectedThickness ?? defaults.dependencies.selectedThickness,
+      hoveredThickness: display?.dependencies?.hoveredThickness ?? defaults.dependencies.hoveredThickness,
+      cornerRadiusPx: display?.dependencies?.cornerRadiusPx ?? defaults.dependencies.cornerRadiusPx,
+      verticalOffsetPx: display?.dependencies?.verticalOffsetPx ?? defaults.dependencies.verticalOffsetPx,
+      arrowLengthPx: display?.dependencies?.arrowLengthPx ?? defaults.dependencies.arrowLengthPx,
+      arrowWidthPx: display?.dependencies?.arrowWidthPx ?? defaults.dependencies.arrowWidthPx,
+      showArrowheads: display?.dependencies?.showArrowheads ?? defaults.dependencies.showArrowheads,
+    },
+  };
+}
 
 function mergeUiConfig(ui: UiConfig | undefined): Required<UiConfig> {
   return {
@@ -175,6 +337,7 @@ export function normalizeConfig(config: GanttConfig = {}): NormalizedGanttConfig
   return {
     data: mergeDataConfig(config.data),
     render: { ...DEFAULT_RENDER_OPTIONS, ...(config.render ?? {}) },
+    display: mergeDisplayConfig(config.display),
     ui: mergeUiConfig(config.ui),
     container: mergeContainerConfig(config.container),
     font: mergeFontConfig(config.font),

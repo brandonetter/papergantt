@@ -117,6 +117,120 @@ export type FrameOptions = {
   renderSelectedDependencies: boolean;
 };
 
+export type GanttColor = [number, number, number, number];
+export type GanttColorInput =
+  | string
+  | [number, number, number]
+  | [number, number, number, number];
+
+export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
+
+export type GanttDisplayConfig = {
+  canvasBackground?: GanttColorInput;
+  rows?: {
+    evenFill?: GanttColorInput;
+    oddFill?: GanttColorInput;
+    separatorColor?: GanttColorInput;
+    separatorThickness?: number;
+    separatorStyle?: StrokeStyle;
+    separatorDashPx?: number;
+    separatorGapPx?: number;
+  };
+  grid?: {
+    color?: GanttColorInput;
+    thickness?: number;
+    style?: StrokeStyle;
+    dashPx?: number;
+    gapPx?: number;
+  };
+  tasks?: {
+    palette?: GanttColorInput[];
+    defaultFill?: GanttColorInput;
+    barRadiusPx?: number;
+    textColor?: GanttColorInput;
+    textShadowColor?: GanttColorInput;
+    selectedOpacity?: number;
+    hoveredOpacity?: number;
+    idleOpacity?: number;
+    selectedBoost?: number;
+    hoveredBoost?: number;
+  };
+  header?: {
+    backgroundColor?: GanttColorInput;
+    borderColor?: GanttColorInput;
+    tickColor?: GanttColorInput;
+    tickHeightPx?: number;
+    textColor?: GanttColorInput;
+    textSizePx?: number;
+  };
+  dependencies?: {
+    color?: GanttColorInput;
+    selectedColor?: GanttColorInput;
+    hoveredColor?: GanttColorInput;
+    thickness?: number;
+    selectedThickness?: number;
+    hoveredThickness?: number;
+    cornerRadiusPx?: number;
+    verticalOffsetPx?: number;
+    arrowLengthPx?: number;
+    arrowWidthPx?: number;
+    showArrowheads?: boolean;
+  };
+};
+
+export type NormalizedGanttDisplayConfig = {
+  canvasBackground: GanttColor;
+  rows: {
+    evenFill: GanttColor;
+    oddFill: GanttColor;
+    separatorColor: GanttColor;
+    separatorThickness: number;
+    separatorStyle: StrokeStyle;
+    separatorDashPx: number;
+    separatorGapPx: number;
+  };
+  grid: {
+    color: GanttColor;
+    thickness: number;
+    style: StrokeStyle;
+    dashPx: number;
+    gapPx: number;
+  };
+  tasks: {
+    palette: GanttColor[];
+    defaultFill: GanttColor | null;
+    barRadiusPx: number;
+    textColor: GanttColor;
+    textShadowColor: GanttColor;
+    selectedOpacity: number;
+    hoveredOpacity: number;
+    idleOpacity: number;
+    selectedBoost: number;
+    hoveredBoost: number;
+  };
+  header: {
+    backgroundColor: GanttColor;
+    borderColor: GanttColor;
+    tickColor: GanttColor;
+    tickHeightPx: number;
+    textColor: GanttColor;
+    textSizePx: number | null;
+  };
+  dependencies: {
+    color: GanttColor;
+    selectedColor: GanttColor | null;
+    hoveredColor: GanttColor | null;
+    thickness: number;
+    selectedThickness: number;
+    hoveredThickness: number;
+    cornerRadiusPx: number;
+    verticalOffsetPx: number;
+    arrowLengthPx: number;
+    arrowWidthPx: number;
+    showArrowheads: boolean;
+  };
+};
+
 const DEFAULT_OPTIONS: FrameOptions = {
   rowPitch: 28,
   barHeight: 14,
@@ -138,14 +252,67 @@ type TimeAxisStep = {
   approxDays: number;
 };
 
-const BAR_PALETTE: Array<[number, number, number]> = [
-  [0.29, 0.66, 0.98],
-  [0.93, 0.57, 0.26],
-  [0.41, 0.76, 0.5],
-  [0.81, 0.49, 0.93],
-  [0.94, 0.74, 0.28],
-  [0.38, 0.74, 0.86],
+const BAR_PALETTE: GanttColor[] = [
+  [0.29, 0.66, 0.98, 1],
+  [0.93, 0.57, 0.26, 1],
+  [0.41, 0.76, 0.5, 1],
+  [0.81, 0.49, 0.93, 1],
+  [0.94, 0.74, 0.28, 1],
+  [0.38, 0.74, 0.86, 1],
 ];
+
+export const DEFAULT_DISPLAY_OPTIONS: NormalizedGanttDisplayConfig = {
+  canvasBackground: [0.05, 0.07, 0.1, 1],
+  rows: {
+    evenFill: [0.08, 0.09, 0.12, 0.88],
+    oddFill: [0.06, 0.07, 0.09, 0.88],
+    separatorColor: [0.14, 0.17, 0.22, 0.85],
+    separatorThickness: 1,
+    separatorStyle: 'solid',
+    separatorDashPx: 7,
+    separatorGapPx: 5,
+  },
+  grid: {
+    color: [0.12, 0.15, 0.2, 0.28],
+    thickness: 1,
+    style: 'solid',
+    dashPx: 7,
+    gapPx: 5,
+  },
+  tasks: {
+    palette: BAR_PALETTE,
+    defaultFill: null,
+    barRadiusPx: 0,
+    textColor: [0.96, 0.98, 1, 0.96],
+    textShadowColor: [0, 0, 0, 0.36],
+    selectedOpacity: 0.98,
+    hoveredOpacity: 0.92,
+    idleOpacity: 0.9,
+    selectedBoost: 1.25,
+    hoveredBoost: 1.1,
+  },
+  header: {
+    backgroundColor: [0.05, 0.07, 0.1, 0.96],
+    borderColor: [0.18, 0.22, 0.28, 0.96],
+    tickColor: [0.28, 0.34, 0.42, 0.8],
+    tickHeightPx: 8,
+    textColor: [0.8, 0.86, 0.93, 0.94],
+    textSizePx: null,
+  },
+  dependencies: {
+    color: [0.76, 0.84, 0.96, 1],
+    selectedColor: null,
+    hoveredColor: null,
+    thickness: 1.5,
+    selectedThickness: 2.5,
+    hoveredThickness: 2,
+    cornerRadiusPx: 7,
+    verticalOffsetPx: 8,
+    arrowLengthPx: 8,
+    arrowWidthPx: 4,
+    showArrowheads: true,
+  },
+};
 
 const MIN_ZOOM = 0.15;
 const MAX_ZOOM_X = 768;
@@ -209,7 +376,7 @@ class FloatInstanceBuffer {
 
 export class SolidInstanceWriter extends FloatInstanceBuffer {
   constructor(initialCapacity = 256) {
-    super(10, initialCapacity);
+    super(12, initialCapacity);
   }
 
   appendRect(
@@ -223,6 +390,7 @@ export class SolidInstanceWriter extends FloatInstanceBuffer {
     a: number,
     kind: number,
     emphasis: number,
+    radiusPx = 0,
   ): void {
     this.ensure();
     const offset = this.count * this.stride;
@@ -236,6 +404,8 @@ export class SolidInstanceWriter extends FloatInstanceBuffer {
     this.data[offset + 7] = a;
     this.data[offset + 8] = kind;
     this.data[offset + 9] = emphasis;
+    this.data[offset + 10] = radiusPx;
+    this.data[offset + 11] = 0;
     this.count += 1;
   }
 }
@@ -658,13 +828,21 @@ export function pickTaskAtPoint(
   return null;
 }
 
-function paletteForRow(rowIndex: number): [number, number, number] {
-  return BAR_PALETTE[rowIndex % BAR_PALETTE.length];
+function paletteForRow(
+  rowIndex: number,
+  display: NormalizedGanttDisplayConfig['tasks'],
+): GanttColor {
+  if (display.defaultFill) {
+    return display.defaultFill;
+  }
+  return display.palette[rowIndex % Math.max(1, display.palette.length)] ?? BAR_PALETTE[0];
 }
 
-function rowFillColor(rowIndex: number): [number, number, number, number] {
-  const even = rowIndex % 2 === 0;
-  return even ? [0.08, 0.09, 0.12, 0.88] : [0.06, 0.07, 0.09, 0.88];
+function rowFillColor(
+  rowIndex: number,
+  display: NormalizedGanttDisplayConfig['rows'],
+): GanttColor {
+  return rowIndex % 2 === 0 ? display.evenFill : display.oddFill;
 }
 
 function appendLabelWithShadow(
@@ -674,10 +852,10 @@ function appendLabelWithShadow(
   x: number,
   baselineY: number,
   fontPx: number,
-  color: [number, number, number, number],
+  color: GanttColor,
+  shadowColor: GanttColor,
   maxWidth: number,
 ): void {
-  const shadowColor: [number, number, number, number] = [0, 0, 0, 0.36 * color[3]];
   const shadowOffsetX = Math.max(0.5, fontPx * 0.025);
   const shadowOffsetY = Math.max(0.5, fontPx * 0.045);
   layout.appendText(
@@ -693,9 +871,9 @@ function appendLabelWithShadow(
 }
 
 function applyAlpha(
-  color: [number, number, number, number],
+  color: GanttColor,
   alphaMultiplier: number,
-): [number, number, number, number] {
+): GanttColor {
   return [color[0], color[1], color[2], color[3] * clamp(alphaMultiplier, 0, 1)];
 }
 
@@ -723,17 +901,23 @@ function taskFillColor(
   task: GanttTask,
   selectedTaskId: string | null,
   hoveredTaskId: string | null,
-): [number, number, number, number] {
-  const [r, g, b] = paletteForRow(task.rowIndex);
+  display: NormalizedGanttDisplayConfig['tasks'],
+): GanttColor {
+  const [r, g, b, a] = paletteForRow(task.rowIndex, display);
   const selected = task.id === selectedTaskId;
   const hovered = task.id === hoveredTaskId;
-  const boost = selected ? 1.25 : hovered ? 1.1 : 1;
+  const boost = selected ? display.selectedBoost : hovered ? display.hoveredBoost : 1;
+  const alpha = selected
+    ? display.selectedOpacity
+    : hovered
+      ? display.hoveredOpacity
+      : display.idleOpacity;
 
   return [
     clamp(r * boost, 0, 1),
     clamp(g * boost, 0, 1),
     clamp(b * boost, 0, 1),
-    selected ? 0.98 : hovered ? 0.92 : 0.9,
+    a * alpha,
   ];
 }
 
@@ -803,6 +987,78 @@ function appendVisibleLine(
 
   lines.appendLine(x1, y1, x2, y2, r, g, b, a, thickness);
   return true;
+}
+
+function appendStyledVisibleLine(
+  lines: LineInstanceWriter,
+  camera: CameraState,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color: GanttColor,
+  thickness: number,
+  style: StrokeStyle,
+  dashPx: number,
+  gapPx: number,
+  padding = 18,
+): boolean {
+  if (style === 'solid') {
+    return appendVisibleLine(
+      lines,
+      camera,
+      x1,
+      y1,
+      x2,
+      y2,
+      color[0],
+      color[1],
+      color[2],
+      color[3],
+      thickness,
+      padding,
+    );
+  }
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const screenLength = Math.hypot(dx * camera.zoomX, dy * camera.zoomY);
+  if (screenLength <= 0.0001) {
+    return false;
+  }
+
+  const effectiveDashPx =
+    style === 'dotted' ? Math.max(thickness, dashPx * 0.45) : Math.max(1, dashPx);
+  const effectiveGapPx =
+    style === 'dotted' ? Math.max(thickness * 1.5, gapPx) : Math.max(1, gapPx);
+  const patternPx = effectiveDashPx + effectiveGapPx;
+  let emitted = false;
+
+  for (let offsetPx = 0; offsetPx < screenLength; offsetPx += patternPx) {
+    const startT = offsetPx / screenLength;
+    const endT = Math.min(1, (offsetPx + effectiveDashPx) / screenLength);
+    if (endT <= startT) {
+      continue;
+    }
+
+    emitted =
+      appendVisibleLine(
+        lines,
+        camera,
+        x1 + dx * startT,
+        y1 + dy * startT,
+        x1 + dx * endT,
+        y1 + dy * endT,
+        color[0],
+        color[1],
+        color[2],
+        color[3],
+        thickness,
+        padding,
+      ) || emitted;
+  }
+
+  return emitted;
 }
 
 function buildRoundedSegments(
@@ -899,6 +1155,7 @@ function buildDependencySegments(
   targetTask: GanttTask,
   camera: CameraState,
   config: FrameOptions,
+  display: NormalizedGanttDisplayConfig['dependencies'],
 ): DependencySegment[] {
   const sourceRect = taskWorldRect(
     sourceTask,
@@ -919,9 +1176,9 @@ function buildDependencySegments(
     y: targetRect.y + targetRect.h * 0.5,
   };
 
-  const cornerRadius = Math.max(4 / camera.zoomX, 7 / camera.zoomX);
+  const cornerRadius = Math.max(0, display.cornerRadiusPx / camera.zoomX);
   const verticalOffset = Math.max(
-    8 / camera.zoomY,
+    display.verticalOffsetPx / camera.zoomY,
     (config.rowPitch - config.barHeight) * 0.5 + 2 / camera.zoomY,
   );
   const points: Point[] = [sourceAnchor];
@@ -973,8 +1230,8 @@ function buildDependencySegments(
   const unitY = dirY / dirLength;
   const perpX = -unitY;
   const perpY = unitX;
-  const arrowLength = 8;
-  const arrowWidth = 4;
+  const arrowLength = display.arrowLengthPx;
+  const arrowWidth = display.arrowWidthPx;
   const leftScreen: [number, number] = [
     targetScreen[0] - unitX * arrowLength + perpX * arrowWidth,
     targetScreen[1] - unitY * arrowLength + perpY * arrowWidth,
@@ -986,18 +1243,20 @@ function buildDependencySegments(
   const leftWorld = screenToWorld(camera, leftScreen[0], leftScreen[1]);
   const rightWorld = screenToWorld(camera, rightScreen[0], rightScreen[1]);
 
-  segments.push({
-    x1: leftWorld[0],
-    y1: leftWorld[1],
-    x2: targetAnchor.x,
-    y2: targetAnchor.y,
-  });
-  segments.push({
-    x1: rightWorld[0],
-    y1: rightWorld[1],
-    x2: targetAnchor.x,
-    y2: targetAnchor.y,
-  });
+  if (display.showArrowheads) {
+    segments.push({
+      x1: leftWorld[0],
+      y1: leftWorld[1],
+      x2: targetAnchor.x,
+      y2: targetAnchor.y,
+    });
+    segments.push({
+      x1: rightWorld[0],
+      y1: rightWorld[1],
+      x2: targetAnchor.x,
+      y2: targetAnchor.y,
+    });
+  }
   return segments;
 }
 
@@ -1070,6 +1329,7 @@ export function buildFrame(
   renderState: RenderState,
   options: Partial<FrameOptions> = {},
   font: GanttFontConfig = {},
+  display: NormalizedGanttDisplayConfig = DEFAULT_DISPLAY_OPTIONS,
 ): FrameScene {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const baseFontPx = Math.max(1, Math.round(font.sizePx ?? 12));
@@ -1097,24 +1357,7 @@ export function buildFrame(
   const window = computeVisibleTimeWindow(camera, config.overscanPx);
   const labelTier = chooseLabelTier(camera.zoomX, baseFontPx);
   const gridStep = chooseGridStep(camera.zoomX);
-  const gridColor: [number, number, number, number] = [0.12, 0.15, 0.2, 0.28];
-  const separatorColor: [number, number, number, number] = [
-    0.14, 0.17, 0.22, 0.85,
-  ];
-  const textColor: [number, number, number, number] = [0.96, 0.98, 1.0, 0.96];
-  const axisTextColor: [number, number, number, number] = [
-    0.8, 0.86, 0.93, 0.94,
-  ];
-  const axisBackgroundColor: [number, number, number, number] = [
-    0.05, 0.07, 0.1, 0.96,
-  ];
-  const axisBorderColor: [number, number, number, number] = [
-    0.18, 0.22, 0.28, 0.96,
-  ];
-  const axisTickColor: [number, number, number, number] = [
-    0.28, 0.34, 0.42, 0.8,
-  ];
-  const axisFontPx = baseFontPx + 1;
+  const axisFontPx = Math.max(1, Math.round(display.header.textSizePx ?? (baseFontPx + 1)));
   const axisScale = axisFontPx / atlas.lineHeight;
   const axisTextHeight = (atlas.ascender + atlas.descender) * axisScale;
   const axisBaseline =
@@ -1140,23 +1383,26 @@ export function buildFrame(
     time <= gridRight;
     time = advanceTimeStep(time, gridStep)
   ) {
-    backgroundLines.appendLine(
+    appendStyledVisibleLine(
+      backgroundLines,
+      camera,
       time,
       gridTop,
       time,
       gridBottom,
-      gridColor[0],
-      gridColor[1],
-      gridColor[2],
-      gridColor[3],
-      1,
+      display.grid.color,
+      display.grid.thickness,
+      display.grid.style,
+      display.grid.dashPx,
+      display.grid.gapPx,
+      0,
     );
     gridLineCount += 1;
   }
 
   for (let row = rowRange.start; row <= rowRange.end; row += 1) {
     const rowY = rowToWorldY(row, config.rowPitch);
-    const [r, g, b, a] = rowFillColor(row);
+    const [r, g, b, a] = rowFillColor(row, display.rows);
     backgroundSolids.appendRect(
       window.start,
       rowY,
@@ -1169,16 +1415,19 @@ export function buildFrame(
       0,
       0,
     );
-    backgroundLines.appendLine(
+    appendStyledVisibleLine(
+      backgroundLines,
+      camera,
       window.start,
       rowY,
       window.end,
       rowY,
-      separatorColor[0],
-      separatorColor[1],
-      separatorColor[2],
-      separatorColor[3],
-      1,
+      display.rows.separatorColor,
+      display.rows.separatorThickness,
+      display.rows.separatorStyle,
+      display.rows.separatorDashPx,
+      display.rows.separatorGapPx,
+      0,
     );
 
     const rowTasks = index.rows[row];
@@ -1216,6 +1465,7 @@ export function buildFrame(
           task,
           renderState.selectedTaskId,
           renderState.hoveredTaskId,
+          display.tasks,
         );
       const emphasis = pluginStyle?.emphasis ?? defaultEmphasis;
       const laneY = rowY + (config.rowPitch - config.barHeight) * 0.5;
@@ -1236,6 +1486,7 @@ export function buildFrame(
           fill[3],
           1,
           emphasis,
+          0,
         );
       } else {
         const rect = taskWorldRect(task, config.rowPitch, config.barHeight);
@@ -1250,6 +1501,7 @@ export function buildFrame(
           fill[3],
           0,
           emphasis,
+          display.tasks.barRadiusPx,
         );
 
         if (labelTier.enabled) {
@@ -1264,12 +1516,21 @@ export function buildFrame(
           const labelTop = baseline - atlas.ascender * scale;
           const labelBottom = labelTop + textBoxHeight;
           const labelColor = applyAlpha(
-            textColor,
+            display.tasks.textColor,
             computeHeaderOcclusionAlpha(
               labelTop,
               labelBottom,
               config.headerHeight,
-              axisBackgroundColor[3],
+              display.header.backgroundColor[3],
+            ),
+          );
+          const labelShadowColor = applyAlpha(
+            display.tasks.textShadowColor,
+            computeHeaderOcclusionAlpha(
+              labelTop,
+              labelBottom,
+              config.headerHeight,
+              display.header.backgroundColor[3],
             ),
           );
           const fullLabelWidth = layout.measure(task.label, labelTier.fontPx);
@@ -1303,6 +1564,7 @@ export function buildFrame(
               baseline,
               labelTier.fontPx,
               labelColor,
+              labelShadowColor,
               fullLabelWidth,
             );
           } else {
@@ -1325,6 +1587,7 @@ export function buildFrame(
                 baseline,
                 labelTier.fontPx,
                 labelColor,
+                labelShadowColor,
                 camera.viewportWidth - labelX - config.labelPadding,
               );
             }
@@ -1339,10 +1602,11 @@ export function buildFrame(
     headerTop,
     viewportWorldWidth,
     headerHeightWorld,
-    axisBackgroundColor[0],
-    axisBackgroundColor[1],
-    axisBackgroundColor[2],
-    axisBackgroundColor[3],
+    display.header.backgroundColor[0],
+    display.header.backgroundColor[1],
+    display.header.backgroundColor[2],
+    display.header.backgroundColor[3],
+    0,
     0,
     0,
   );
@@ -1351,10 +1615,11 @@ export function buildFrame(
     headerBottom - 1 / camera.zoomY,
     viewportWorldWidth,
     1 / camera.zoomY,
-    axisBorderColor[0],
-    axisBorderColor[1],
-    axisBorderColor[2],
-    axisBorderColor[3],
+    display.header.borderColor[0],
+    display.header.borderColor[1],
+    display.header.borderColor[2],
+    display.header.borderColor[3],
+    0,
     0,
     0,
   );
@@ -1373,13 +1638,14 @@ export function buildFrame(
 
     foregroundSolids.appendRect(
       tick,
-      headerBottom - 8 / camera.zoomY,
+      headerBottom - display.header.tickHeightPx / camera.zoomY,
       1 / camera.zoomX,
-      8 / camera.zoomY,
-      axisTickColor[0],
-      axisTickColor[1],
-      axisTickColor[2],
-      axisTickColor[3],
+      display.header.tickHeightPx / camera.zoomY,
+      display.header.tickColor[0],
+      display.header.tickColor[1],
+      display.header.tickColor[2],
+      display.header.tickColor[3],
+      0,
       0,
       0,
     );
@@ -1404,7 +1670,7 @@ export function buildFrame(
       clamp(centeredX, minX, maxX),
       axisBaseline,
       axisFontPx,
-      axisTextColor,
+      display.header.textColor,
       labelWidth,
     );
   }
@@ -1433,13 +1699,22 @@ export function buildFrame(
             : taskHovered || predecessorHovered
               ? 0.6
               : 0.35;
-      const thickness = lineSelected ? 2.5 : lineHovered ? 2.0 : 1.5;
+      const thickness = lineSelected
+        ? display.dependencies.selectedThickness
+        : lineHovered
+          ? display.dependencies.hoveredThickness
+          : display.dependencies.thickness;
+      const dependencyColor =
+        (lineSelected && display.dependencies.selectedColor) ||
+        (lineHovered && display.dependencies.hoveredColor) ||
+        display.dependencies.color;
       let emitted = false;
       const segments = buildDependencySegments(
         predecessor,
         task,
         camera,
         config,
+        display.dependencies,
       );
 
       for (const segment of segments) {
@@ -1451,10 +1726,10 @@ export function buildFrame(
             segment.y1,
             segment.x2,
             segment.y2,
-            0.76,
-            0.84,
-            0.96,
-            emphasis,
+            dependencyColor[0],
+            dependencyColor[1],
+            dependencyColor[2],
+            dependencyColor[3] * emphasis,
             thickness,
           ) || emitted;
       }
