@@ -677,7 +677,7 @@ function appendLabelWithShadow(
   color: [number, number, number, number],
   maxWidth: number,
 ): void {
-  const shadowColor: [number, number, number, number] = [0, 0, 0, 0.36];
+  const shadowColor: [number, number, number, number] = [0, 0, 0, 0.36 * color[3]];
   const shadowOffsetX = Math.max(0.5, fontPx * 0.025);
   const shadowOffsetY = Math.max(0.5, fontPx * 0.045);
   layout.appendText(
@@ -690,6 +690,33 @@ function appendLabelWithShadow(
     maxWidth,
   );
   layout.appendText(glyphs, text, x, baselineY, fontPx, color, maxWidth);
+}
+
+function applyAlpha(
+  color: [number, number, number, number],
+  alphaMultiplier: number,
+): [number, number, number, number] {
+  return [color[0], color[1], color[2], color[3] * clamp(alphaMultiplier, 0, 1)];
+}
+
+function computeHeaderOcclusionAlpha(
+  top: number,
+  bottom: number,
+  headerHeight: number,
+  occluderAlpha: number,
+): number {
+  if (top >= headerHeight) {
+    return 1;
+  }
+
+  if (bottom <= headerHeight) {
+    return 1 - clamp(occluderAlpha, 0, 1);
+  }
+
+  const height = Math.max(0.0001, bottom - top);
+  const overlap = Math.max(0, Math.min(bottom, headerHeight) - Math.max(top, 0));
+  const overlapRatio = clamp(overlap / height, 0, 1);
+  return 1 - clamp(occluderAlpha, 0, 1) * overlapRatio;
 }
 
 function taskFillColor(
@@ -1235,6 +1262,17 @@ export function buildFrame(
           const textBoxHeight = (atlas.ascender + atlas.descender) * scale;
           const baseline =
             screenY + (screenH - textBoxHeight) * 0.5 + atlas.ascender * scale;
+          const labelTop = baseline - atlas.ascender * scale;
+          const labelBottom = labelTop + textBoxHeight;
+          const labelColor = applyAlpha(
+            textColor,
+            computeHeaderOcclusionAlpha(
+              labelTop,
+              labelBottom,
+              config.headerHeight,
+              axisBackgroundColor[3],
+            ),
+          );
           const fullLabelWidth = layout.measure(task.label, labelTier.fontPx);
           const visibleLeft = clamp(screenX, 0, camera.viewportWidth);
           const visibleRight = clamp(
@@ -1265,7 +1303,7 @@ export function buildFrame(
               labelX,
               baseline,
               labelTier.fontPx,
-              textColor,
+              labelColor,
               fullLabelWidth,
             );
           } else {
@@ -1287,7 +1325,7 @@ export function buildFrame(
                 labelX,
                 baseline,
                 labelTier.fontPx,
-                textColor,
+                labelColor,
                 camera.viewportWidth - labelX - config.labelPadding,
               );
             }

@@ -161,4 +161,52 @@ describe('frame assembly', () => {
     expect(frame.stats.visibleDependencies).toBe(2);
     expect(frame.dependencyPaths.map((path) => path.id).sort()).toEqual(['a->c', 'b->c']);
   });
+
+  it('fades task label glyph alpha under the header and keeps fully above labels dimmed', () => {
+    const atlas = makeTestAtlas();
+    const layout = new TextLayoutEngine(atlas);
+    const scene = {
+      rowLabels: ['Row 1'],
+      timelineStart: 0,
+      timelineEnd: 100,
+      tasks: [{ id: 'a', rowIndex: 0, start: 10, end: 60, label: 'Task' }],
+    };
+    const index = buildTaskIndex(scene.tasks);
+    const camera = { ...createCamera(800, 240), zoomX: 2, zoomY: 1, scrollX: 0, scrollY: 0 };
+    const renderState = {
+      selectedTaskId: null,
+      hoveredTaskId: null,
+      selectedDependencyId: null,
+      hoveredDependencyId: null,
+    };
+
+    const occludedFrame = buildFrame(scene, index, camera, atlas, layout, renderState, {
+      headerHeight: 20,
+    });
+    const aboveTimelineFrame = buildFrame(
+      scene,
+      index,
+      { ...camera, scrollY: 48 },
+      atlas,
+      layout,
+      renderState,
+      {
+        headerHeight: 20,
+      },
+    );
+    const clearFrame = buildFrame(scene, index, camera, atlas, layout, renderState, {
+      headerHeight: 0,
+    });
+
+    const glyphStride = 12;
+    const textGlyphOffset = 'Task'.length * glyphStride;
+    const occludedAlpha = occludedFrame.glyphs.view()[textGlyphOffset + 11];
+    const aboveTimelineAlpha = aboveTimelineFrame.glyphs.view()[textGlyphOffset + 11];
+    const clearAlpha = clearFrame.glyphs.view()[textGlyphOffset + 11];
+
+    expect(occludedAlpha).toBeLessThan(clearAlpha);
+    expect(aboveTimelineAlpha).toBeLessThan(clearAlpha);
+    expect(aboveTimelineAlpha).toBeLessThan(occludedAlpha);
+    expect(clearAlpha).toBeCloseTo(0.96);
+  });
 });
