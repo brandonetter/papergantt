@@ -26,6 +26,18 @@ function clampTaskStart(task) {
   };
 }
 
+function formatModeLabel(mode) {
+  if (mode === 'edit') {
+    return 'Edit';
+  }
+
+  if (mode === 'select') {
+    return 'Select';
+  }
+
+  return 'View';
+}
+
 const safePlugin = {
   meta: {
     id: 'demo-safe-style',
@@ -82,10 +94,10 @@ const safePlugin = {
         metric.textContent = `${visibleTasks} visible tasks`;
       }
       if (detail) {
-        detail.textContent = `${modeLabel} • commits ${commitCount}`;
+        detail.textContent = `${modeLabel} | commits ${commitCount}`;
       }
       if (subtleDetail) {
-        subtleDetail.textContent = `${selectionLabel} • ${editLabel}`;
+        subtleDetail.textContent = `${selectionLabel} | ${editLabel}`;
       }
     }
 
@@ -123,20 +135,22 @@ const safePlugin = {
           }),
         );
 
-        modeLabel = `Mode: ${context.safe.getInteractionState().mode === 'edit' ? 'Edit' : 'View'}`;
+        modeLabel = `Mode: ${formatModeLabel(context.safe.getInteractionState().mode)}`;
       },
 
       onSelectionChange(selection) {
-        selectionLabel = selection.selectedTask
-          ? `Selected: ${selection.selectedTask.label}`
-          : selection.hoveredTask
-            ? `Hover: ${selection.hoveredTask.label}`
-            : 'No task selected';
+        selectionLabel = Array.isArray(selection.selectedTasks) && selection.selectedTasks.length > 1
+          ? `Selected: ${selection.selectedTasks.length} tasks`
+          : selection.selectedTask
+            ? `Selected: ${selection.selectedTask.label}`
+            : selection.hoveredTask
+              ? `Hover: ${selection.hoveredTask.label}`
+              : 'No task selected';
         renderBadge();
       },
 
       onEditModeChange(mode) {
-        modeLabel = `Mode: ${mode === 'edit' ? 'Edit' : 'View'}`;
+        modeLabel = `Mode: ${formatModeLabel(mode)}`;
         renderBadge();
       },
 

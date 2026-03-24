@@ -24,6 +24,11 @@ export type TaskEditDraftResult = {
   snap: GanttTaskEditSnap;
 };
 
+export type TaskEditGroupDraftResult = {
+  draftTasks: GanttTask[];
+  snap: GanttTaskEditSnap;
+};
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -192,11 +197,62 @@ export function resolveTaskEditDraft(input: {
   };
 }
 
+export function resolveTaskMoveDrafts(input: {
+  tasks: GanttTask[];
+  primaryTaskId?: string | null;
+  pointer: GanttTaskEditPointer;
+  startPointer: GanttTaskEditPointer;
+  rowPitch: number;
+  rowCount: number;
+  editConfig: NormalizedGanttEditConfig;
+  disableSnap?: boolean;
+}): TaskEditGroupDraftResult {
+  const { tasks, pointer, startPointer, rowPitch, rowCount, editConfig } = input;
+  const disableSnap = input.disableSnap ?? false;
+  const primaryTask = tasks.find((task) => task.id === input.primaryTaskId) ?? tasks[0];
+
+  if (!primaryTask) {
+    return {
+      draftTasks: [],
+      snap: createSnapInfo(editConfig, disableSnap),
+    };
+  }
+
+  const rawStart = primaryTask.start + (pointer.worldX - startPointer.worldX);
+  const { value: start, snap } = applySnap(rawStart, editConfig, disableSnap);
+  const timeDelta = start - primaryTask.start;
+  const rawRowDelta = Math.round((pointer.worldY - startPointer.worldY) / rowPitch);
+
+  let clampedRowDelta = 0;
+  if (editConfig.drag.allowRowChange) {
+    const minRowIndex = Math.min(...tasks.map((task) => task.rowIndex));
+    const maxRowIndex = Math.max(...tasks.map((task) => task.rowIndex));
+    clampedRowDelta = clamp(
+      rawRowDelta,
+      -minRowIndex,
+      Math.max(0, rowCount - 1) - maxRowIndex,
+    );
+  }
+
+  return {
+    draftTasks: tasks.map((task) => ({
+      ...cloneTask(task),
+      rowIndex: task.rowIndex + clampedRowDelta,
+      start: task.start + timeDelta,
+      end: task.end + timeDelta,
+    })),
+    snap,
+  };
+}
+
 export function replaceTaskInScene(scene: GanttScene, task: GanttTask): GanttScene {
+  return replaceTasksInScene(scene, [task]);
+}
+
+export function replaceTasksInScene(scene: GanttScene, tasksToReplace: GanttTask[]): GanttScene {
+  const replacementById = new Map(tasksToReplace.map((task) => [task.id, cloneTask(task)]));
   const tasks = scene.tasks.map((candidate) => (
-    candidate.id === task.id
-      ? cloneTask(task)
-      : cloneTask(candidate)
+    replacementById.get(candidate.id) ?? cloneTask(candidate)
   ));
   const minStart = tasks.length > 0 ? Math.min(scene.timelineStart, ...tasks.map((candidate) => candidate.start)) : scene.timelineStart;
   const maxEnd = tasks.length > 0 ? Math.max(scene.timelineEnd, ...tasks.map((candidate) => candidate.end)) : scene.timelineEnd;

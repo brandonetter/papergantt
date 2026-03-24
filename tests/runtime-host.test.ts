@@ -337,6 +337,65 @@ describe('runtime task host controller', () => {
     await host.dispose();
   });
 
+  it('tracks multi-task selection with a primary task and preserves remaining selections after delete', async () => {
+    const host = await createHost();
+    const controller = host.getController();
+
+    controller.setSelectionByTaskIds(['a', 'b'], 'b');
+
+    expect(controller.getSelection().selectedTask?.id).toBe('b');
+    expect(controller.getSelection().selectedTasks.map((task) => task.id)).toEqual(['b', 'a']);
+
+    controller.deleteTask('b');
+
+    expect(controller.getSelection().selectedTask?.id).toBe('a');
+    expect(controller.getSelection().selectedTasks.map((task) => task.id)).toEqual(['a']);
+
+    await host.dispose();
+  });
+
+  it('previews and commits multi-task edit batches without collapsing selection', async () => {
+    const host = await createHost();
+    const controller = host.getController();
+
+    controller.setSelectionByTaskIds(['a', 'b'], 'a');
+
+    const previewEvents = controller.previewTaskEdits([
+      {
+        taskId: 'a',
+        operation: 'move',
+        originalTask: { id: 'a', rowIndex: 0, start: 10, end: 12, label: 'Task A' },
+        proposedTask: { id: 'a', rowIndex: 1, start: 12, end: 14, label: 'Task A' },
+        previousDraftTask: null,
+        pointer: { screenX: 0, screenY: 0, worldX: 12, worldY: 30 },
+        snap: { mode: 'day', incrementDays: 1, applied: true, disabledByModifier: false },
+      },
+      {
+        taskId: 'b',
+        operation: 'move',
+        originalTask: { id: 'b', rowIndex: 1, start: 14, end: 18, label: 'Task B', dependencies: ['a'] },
+        proposedTask: { id: 'b', rowIndex: 2, start: 16, end: 20, label: 'Task B', dependencies: ['a'] },
+        previousDraftTask: null,
+        pointer: { screenX: 0, screenY: 0, worldX: 12, worldY: 30 },
+        snap: { mode: 'day', incrementDays: 1, applied: true, disabledByModifier: false },
+      },
+    ]);
+
+    expect(previewEvents?.map((event) => event.taskId)).toEqual(['a', 'b']);
+    expect(controller.getSelection().selectedTasks.map((task) => task.id)).toEqual(['a', 'b']);
+    expect(controller.getInteractionState().activeEdit?.taskId).toBe('a');
+
+    const committed = await controller.commitTaskEdits(previewEvents ?? null);
+
+    expect(committed).toBe(true);
+    expect(controller.getTask('a')).toMatchObject({ rowIndex: 1, start: 12, end: 14 });
+    expect(controller.getTask('b')).toMatchObject({ rowIndex: 2, start: 16, end: 20 });
+    expect(controller.getSelection().selectedTasks.map((task) => task.id)).toEqual(['a', 'b']);
+    expect(controller.getSelection().selectedTask?.id).toBe('a');
+
+    await host.dispose();
+  });
+
   it('cancels preview edits before runtime mutations and blocks mutations during pending commits', async () => {
     const host = await createHost();
     const controller = host.getController();

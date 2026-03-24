@@ -1,4 +1,4 @@
-import { DEFAULT_DISPLAY_OPTIONS, buildFrame, buildTaskIndex, createCamera, pickTaskAtPoint } from '@gantt/gantt-core';
+import { DEFAULT_DISPLAY_OPTIONS, buildFrame, buildTaskIndex, createCamera, pickTaskAtPoint, pickTasksInScreenRect } from '@gantt/gantt-core';
 import { TextLayoutEngine } from '@gantt/gantt-core';
 import { makeTestAtlas } from './helpers';
 
@@ -185,6 +185,176 @@ describe('frame assembly', () => {
     expect(editFrame.foregroundSolids.count).toBeGreaterThan(viewFrame.foregroundSolids.count);
   });
 
+  it('renders group move ghosts for multi-selected edit previews', () => {
+    const atlas = makeTestAtlas();
+    const layout = new TextLayoutEngine(atlas);
+    const scene = {
+      rowLabels: ['Row 1', 'Row 2', 'Row 3'],
+      timelineStart: 0,
+      timelineEnd: 100,
+      tasks: [
+        { id: 'a', rowIndex: 0, start: 10, end: 30, label: 'Task A' },
+        { id: 'b', rowIndex: 1, start: 36, end: 48, label: 'Task B' },
+        { id: 'c', rowIndex: 2, start: 52, end: 60, label: 'Task C' },
+      ],
+    };
+    const index = buildTaskIndex(scene.tasks, scene.rowLabels.length);
+    const camera = { ...createCamera(800, 280), zoomX: 6, zoomY: 1, scrollX: 0, scrollY: 0 };
+
+    const viewFrame = buildFrame(
+      scene,
+      index,
+      camera,
+      atlas,
+      layout,
+      {
+        selectedTaskId: 'a',
+        selectedTaskIds: ['a', 'b'],
+        hoveredTaskId: null,
+        selectedDependencyId: null,
+        hoveredDependencyId: null,
+      },
+      {
+        rowPitch: 30,
+        barHeight: 16,
+      },
+    );
+
+    const editFrame = buildFrame(
+      scene,
+      index,
+      camera,
+      atlas,
+      layout,
+      {
+        selectedTaskId: 'a',
+        selectedTaskIds: ['a', 'b'],
+        hoveredTaskId: null,
+        selectedDependencyId: null,
+        hoveredDependencyId: null,
+        interactionMode: 'edit',
+        activeEdit: {
+          taskId: 'a',
+          operation: 'move',
+          originalTask: scene.tasks[0],
+          draftTask: { ...scene.tasks[0], rowIndex: 1, start: 14, end: 34 },
+          originalTasks: [scene.tasks[0], scene.tasks[1]],
+          draftTasks: [
+            { ...scene.tasks[0], rowIndex: 1, start: 14, end: 34 },
+            { ...scene.tasks[1], rowIndex: 2, start: 40, end: 52 },
+          ],
+          status: 'preview',
+        },
+        editAffordances: {
+          enabled: true,
+          handleWidthPx: 12,
+          resizeEnabled: true,
+        },
+      },
+      {
+        rowPitch: 30,
+        barHeight: 16,
+      },
+    );
+
+    expect(editFrame.foregroundSolids.count).toBeGreaterThan(viewFrame.foregroundSolids.count);
+  });
+
+  it('renders selection outlines in select mode without edit previews', () => {
+    const atlas = makeTestAtlas();
+    const layout = new TextLayoutEngine(atlas);
+    const scene = {
+      rowLabels: ['Row 1', 'Row 2'],
+      timelineStart: 0,
+      timelineEnd: 100,
+      tasks: [
+        { id: 'a', rowIndex: 0, start: 10, end: 30, label: 'Task A' },
+        { id: 'b', rowIndex: 1, start: 36, end: 48, label: 'Task B' },
+      ],
+    };
+    const index = buildTaskIndex(scene.tasks, scene.rowLabels.length);
+    const camera = { ...createCamera(800, 280), zoomX: 6, zoomY: 1, scrollX: 0, scrollY: 0 };
+
+    const viewFrame = buildFrame(
+      scene,
+      index,
+      camera,
+      atlas,
+      layout,
+      {
+        selectedTaskId: 'a',
+        selectedTaskIds: ['a', 'b'],
+        hoveredTaskId: null,
+        selectedDependencyId: null,
+        hoveredDependencyId: null,
+      },
+      {
+        rowPitch: 30,
+        barHeight: 16,
+      },
+    );
+
+    const editFrame = buildFrame(
+      scene,
+      index,
+      camera,
+      atlas,
+      layout,
+      {
+        selectedTaskId: 'a',
+        selectedTaskIds: ['a'],
+        hoveredTaskId: null,
+        selectedDependencyId: null,
+        hoveredDependencyId: null,
+        interactionMode: 'edit',
+        activeEdit: {
+          taskId: 'a',
+          operation: 'move',
+          originalTask: scene.tasks[0],
+          draftTask: { ...scene.tasks[0], rowIndex: 1, start: 14, end: 34 },
+          status: 'preview',
+        },
+        editAffordances: {
+          enabled: true,
+          handleWidthPx: 12,
+          resizeEnabled: true,
+        },
+      },
+      {
+        rowPitch: 30,
+        barHeight: 16,
+      },
+    );
+
+    const selectFrame = buildFrame(
+      scene,
+      index,
+      camera,
+      atlas,
+      layout,
+      {
+        selectedTaskId: 'a',
+        selectedTaskIds: ['a'],
+        hoveredTaskId: null,
+        selectedDependencyId: null,
+        hoveredDependencyId: null,
+        interactionMode: 'select',
+        editAffordances: {
+          enabled: true,
+          handleWidthPx: 12,
+          resizeEnabled: true,
+        },
+      },
+      {
+        rowPitch: 30,
+        barHeight: 16,
+      },
+    );
+
+    expect(selectFrame.foregroundSolids.count).toBeGreaterThan(viewFrame.foregroundSolids.count);
+    expect(selectFrame.foregroundSolids.count).toBeLessThan(editFrame.foregroundSolids.count);
+  });
+
   it('emits both connectors for a task with double dependencies', () => {
     const atlas = makeTestAtlas();
     const layout = new TextLayoutEngine(atlas);
@@ -283,6 +453,34 @@ describe('frame assembly', () => {
     });
 
     expect(pickedNearRightEdge?.id).toBe('a');
+  });
+
+  it('finds every task intersecting a marquee selection rectangle', () => {
+    const scene = {
+      rowLabels: ['Row 1', 'Row 2', 'Row 3'],
+      timelineStart: 0,
+      timelineEnd: 50,
+      tasks: [
+        { id: 'a', rowIndex: 0, start: 10, end: 20, label: 'A' },
+        { id: 'b', rowIndex: 1, start: 15, end: 28, label: 'B' },
+        { id: 'c', rowIndex: 2, start: 35, end: 40, label: 'C' },
+      ],
+    };
+    const index = buildTaskIndex(scene.tasks, scene.rowLabels.length);
+    const camera = {
+      ...createCamera(800, 240),
+      zoomX: 10,
+      zoomY: 1,
+      scrollX: 0,
+      scrollY: 0,
+    };
+
+    const tasks = pickTasksInScreenRect(scene, index, camera, 90, 0, 300, 60, {
+      rowPitch: 30,
+      barHeight: 16,
+    });
+
+    expect(tasks.map((task) => task.id)).toEqual(['a', 'b']);
   });
 
   it('applies display styling overrides to grid, task text, and dependencies', () => {

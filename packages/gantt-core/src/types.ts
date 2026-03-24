@@ -48,12 +48,13 @@ export type GanttPluginMeta = {
 
 export type PluginSelectionState = {
   selectedTask: GanttTask | null;
+  selectedTasks: GanttTask[];
   hoveredTask: GanttTask | null;
   selectedDependency: DependencyPath | null;
   hoveredDependency: DependencyPath | null;
 };
 
-export type GanttInteractionMode = 'view' | 'edit';
+export type GanttInteractionMode = 'view' | 'select' | 'edit';
 
 export type GanttTaskEditOperation = 'move' | 'resize-start' | 'resize-end';
 
@@ -400,13 +401,19 @@ export type GanttHostController = {
   registerCleanup: (callback: () => void) => void;
   getSelection: () => PluginSelectionState;
   setSelectionByTaskId: (taskId: string | null) => void;
+  setSelectionByTaskIds: (taskIds: string[], primaryTaskId?: string | null) => void;
   setSelectionByScreenPoint: (x: number, y: number) => void;
+  previewSelectionByTaskIds: (taskIds: string[], primaryTaskId?: string | null) => void;
+  clearSelectionPreview: () => void;
   setInteractionMode: (mode: GanttInteractionMode) => void;
   cancelActiveEdit: () => void;
   previewTaskEdit: (event: GanttTaskEditEvent) => GanttTaskEditEvent | null;
+  previewTaskEdits: (events: GanttTaskEditEvent[]) => GanttTaskEditEvent[] | null;
   commitActiveEdit: (event?: GanttTaskEditEvent | null) => Promise<boolean>;
+  commitTaskEdits: (events?: GanttTaskEditEvent[] | null) => Promise<boolean>;
   updateHoverFromScreen: (x: number, y: number) => void;
   pickTaskAtScreen: (x: number, y: number) => GanttTask | null;
+  pickTasksInScreenRect: (x0: number, y0: number, x1: number, y1: number) => GanttTask[];
   pickDependencyAtScreen: (x: number, y: number) => DependencyPath | null;
   stopCameraAnimation: () => void;
   syncCanvasSize: () => void;

@@ -247,7 +247,7 @@ function buildPage(scene: GanttScene): string {
           <h1>Editable gantt rendering, plugin hooks, and theme presets in one surface.</h1>
           <p class="demo-lede">
             The page now doubles as an interaction bench.
-            View mode, edit mode, drag-move, resize handles, snapping presets, and plugin callbacks all stay visible while the themed hosts continue to prove the renderer surface.
+            View, select, and edit modes, marquee selection, drag-move, resize handles, snapping presets, and plugin callbacks all stay visible while the themed hosts continue to prove the renderer surface.
           </p>
         </div>
         <div class="demo-stats" aria-label="Dataset summary">
@@ -278,13 +278,13 @@ function buildPage(scene: GanttScene): string {
               <h2>Core editor controls</h2>
               <p>
                 This section is the stock host with the new editing runtime turned on.
-                Use the built-in View/Edit toggle, then drag tasks, resize them from the handles, or switch snap presets below.
+                Use the icon toolbar to switch between view, select, and edit, then marquee-select tasks, move the whole selection in edit mode, resize single tasks from the handles, or switch snap presets below.
               </p>
             </div>
             <ul class="demo-note-list">
               <li>Pure <code>createGanttHost(...)</code> path with no plugins</li>
               <li>Uses edit callbacks and draft overlays from core only</li>
-              <li>Press <code>E</code> to toggle edit mode and <code>Shift</code> to bypass snapping mid-drag</li>
+              <li>Press <code>V</code>, <code>S</code>, or <code>E</code> for view, select, and edit; hold <code>Shift</code> to bypass snapping mid-drag</li>
             </ul>
             <div class="demo-snap-picker" aria-label="Baseline snap presets">
               ${SNAP_PRESETS.map((preset) => (
@@ -681,7 +681,7 @@ async function boot(): Promise<void> {
       title: 'Core editor',
       showInspector: false,
       statusText:
-        'Press E for edit mode. Drag to move, use handles to resize, Shift disables snapping, and double-click still focuses in view mode.',
+        'Press V, S, or E for view, select, and edit. Drag in select mode to marquee-select, drag in edit mode to move the selection as a group, use handles to resize a single task, Shift disables snapping, and double-click still focuses in view mode.',
     },
   });
 

@@ -5,6 +5,7 @@ import {
   createCamera,
   panCamera,
   pickDependencyAtPoint,
+  pickTasksInScreenRect as pickTasksInScreenRectCore,
   pickTaskAtPoint,
   resizeCamera,
   taskWorldRect,
@@ -19,7 +20,7 @@ import {
   type TaskIndex,
 } from './core';
 import { normalizeConfig, resolveScene } from './config';
-import { createTaskEditEvent, replaceTaskInScene } from './edit';
+import { createTaskEditEvent, replaceTaskInScene, replaceTasksInScene } from './edit';
 import { createFallbackFontAtlas, loadMsdfFontAtlas, TextLayoutEngine, type FontAtlas } from './font';
 import { ModuleManager } from './module-manager';
 import { PluginRuntime } from './plugin-runtime';
@@ -78,6 +79,13 @@ type ZoomPreset = {
   visibleDays: number;
 };
 
+type ActiveEditBatchState = {
+  primaryTaskId: string;
+  events: GanttTaskEditEvent[];
+  originalTasks: GanttTask[];
+  draftTasks: GanttTask[];
+};
+
 const ZOOM_PRESETS: ZoomPreset[] = [
   { id: 'day', label: 'Day', visibleDays: 1 },
   { id: 'week', label: 'Week', visibleDays: 7 },
@@ -94,6 +102,61 @@ const FONT_WEIGHT_ALIASES: Record<string, string> = {
   semibold: '600',
   bold: '700',
 };
+
+function getInteractionModeLabel(mode: GanttInteractionMode): string {
+  switch (mode) {
+    case 'edit':
+      return 'Edit';
+    case 'select':
+      return 'Select';
+    default:
+      return 'View';
+  }
+}
+
+function renderInteractionModeIcon(mode: GanttInteractionMode): string {
+  switch (mode) {
+    case 'edit':
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20h4.75L19 9.75 14.25 5 4 15.25V20Z" />
+          <path d="M12.5 6.75 17.25 11.5" />
+        </svg>
+      `;
+    case 'select':
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="5" y="5" width="14" height="14" rx="1.5" stroke-dasharray="2.5 2.5" />
+        </svg>
+      `;
+    default:
+      return `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7.5 12.5v-3a2.5 2.5 0 0 1 5 0v5.5" />
+          <path d="M12.5 12.5v-4a2.5 2.5 0 0 1 5 0V15" />
+          <path d="M7.5 12.5V8.75a2.25 2.25 0 0 0-4.5 0V15.5a5.5 5.5 0 0 0 5.5 5.5H13" />
+          <path d="M13 21h1.5a5.5 5.5 0 0 0 5.5-5.5v-2a2.5 2.5 0 0 0-5 0" />
+        </svg>
+      `;
+  }
+}
+
+function renderInteractionModeButton(mode: GanttInteractionMode): string {
+  const label = getInteractionModeLabel(mode);
+  return `
+    <button
+      type="button"
+      class="zoom-button mode-button"
+      data-interaction-mode="${mode}"
+      aria-label="${label}"
+      aria-pressed="false"
+      title="${label}"
+    >
+      <span class="toolbar-button__icon" aria-hidden="true">${renderInteractionModeIcon(mode)}</span>
+      <span class="toolbar-button__label">${label}</span>
+    </button>
+  `;
+}
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -170,11 +233,15 @@ function createAppElements(root: HTMLElement, config: NormalizedGanttConfig): Ap
   const footerSlot = config.container.footer.visible ? createElement('div', 'gantt-footer-slot') : null;
 
   if (toolbar) {
-    const modeControls = config.edit.enabled
+    const modeButtons = [
+      renderInteractionModeButton('view'),
+      renderInteractionModeButton('select'),
+      ...(config.edit.enabled ? [renderInteractionModeButton('edit')] : []),
+    ].join('');
+    const modeControls = modeButtons.length > 0
       ? `
         <div class="toolbar-group toolbar-group--mode">
-          <button type="button" class="zoom-button mode-button" data-interaction-mode="view">View</button>
-          <button type="button" class="zoom-button mode-button" data-interaction-mode="edit">Edit</button>
+          ${modeButtons}
         </div>
         <div class="toolbar-divider" aria-hidden="true"></div>
       `
@@ -394,12 +461,17 @@ class GanttHostImpl implements GanttHostController {
   private camera: CameraState;
   private interactionMode: GanttInteractionMode;
   private activeEdit: GanttTaskEditState | null = null;
+  private activeEditBatch: ActiveEditBatchState | null = null;
   private lastTaskEditEvent: GanttTaskEditEvent | null = null;
   private selectedTaskId: string | null = null;
+  private selectedTaskIds: string[] = [];
+  private selectionPreviewTaskIds: string[] | null = null;
+  private selectionPreviewPrimaryTaskId: string | null = null;
   private hoveredTaskId: string | null = null;
   private selectedDependencyId: string | null = null;
   private hoveredDependencyId: string | null = null;
   private selectedTask: GanttTask | null = null;
+  private selectedTasks: GanttTask[] = [];
   private hoveredTask: GanttTask | null = null;
   private selectedDependency: DependencyPath | null = null;
   private hoveredDependency: DependencyPath | null = null;
@@ -443,7 +515,11 @@ class GanttHostImpl implements GanttHostController {
     this.gl = gl;
     this.renderer = new GanttRenderer(gl);
     this.camera = createHostCameraState(1280, 720, this.config.render.headerHeight, 0, false);
-    this.interactionMode = this.config.edit.enabled ? this.config.edit.defaultMode : 'view';
+    this.interactionMode =
+      this.config.edit.defaultMode === 'edit' && !this.config.edit.enabled
+        ? 'view'
+        : this.config.edit.defaultMode;
+    this.canvas.dataset.mode = this.interactionMode;
 
     this.pluginRuntime = new PluginRuntime({
       config: this.config,
@@ -558,7 +634,8 @@ class GanttHostImpl implements GanttHostController {
     }
 
     if (!this.effectiveScene) {
-      this.effectiveScene = replaceTaskInScene(this.scene, this.activeEdit.draftTask);
+      const draftTasks = this.activeEditBatch?.draftTasks ?? [this.activeEdit.draftTask];
+      this.effectiveScene = replaceTasksInScene(this.scene, draftTasks);
     }
 
     return this.effectiveScene;
@@ -581,13 +658,66 @@ class GanttHostImpl implements GanttHostController {
     return taskId !== null && index.byId.has(taskId);
   }
 
+  private normalizeSelectedTaskIds(
+    taskIds: readonly string[],
+    index: TaskIndex,
+    primaryTaskId: string | null = null,
+  ): string[] {
+    const nextTaskIds: string[] = [];
+    const seen = new Set<string>();
+
+    const appendTaskId = (taskId: string | null) => {
+      if (!taskId || seen.has(taskId) || !index.byId.has(taskId)) {
+        return;
+      }
+
+      seen.add(taskId);
+      nextTaskIds.push(taskId);
+    };
+
+    appendTaskId(primaryTaskId);
+    for (const taskId of taskIds) {
+      appendTaskId(taskId);
+    }
+
+    return nextTaskIds;
+  }
+
+  private assignTaskSelection(taskIds: readonly string[], primaryTaskId: string | null = null): void {
+    const index = this.getRenderIndex();
+    this.selectedTaskIds = this.normalizeSelectedTaskIds(taskIds, index, primaryTaskId);
+    this.selectedTasks = this.selectedTaskIds
+      .map((taskId) => index.byId.get(taskId) ?? null)
+      .filter((task): task is GanttTask => task !== null);
+    this.selectedTask = this.selectedTasks[0] ?? null;
+    this.selectedTaskId = this.selectedTask?.id ?? null;
+    this.selectedDependency = null;
+    this.selectedDependencyId = null;
+  }
+
+  private clearTaskSelection(): void {
+    this.selectedTaskIds = [];
+    this.selectedTasks = [];
+    this.selectedTaskId = null;
+    this.selectedTask = null;
+  }
+
   private refreshSelectionReferences(): void {
     const index = this.getRenderIndex();
-    if (this.hasTask(this.selectedTaskId, index)) {
-      this.selectedTask = index.byId.get(this.selectedTaskId as string) ?? null;
-    } else {
-      this.selectedTaskId = null;
-      this.selectedTask = null;
+    this.selectedTaskIds = this.normalizeSelectedTaskIds(this.selectedTaskIds, index, this.selectedTaskId);
+    this.selectedTasks = this.selectedTaskIds
+      .map((taskId) => index.byId.get(taskId) ?? null)
+      .filter((task): task is GanttTask => task !== null);
+    this.selectedTask = this.selectedTasks[0] ?? null;
+    this.selectedTaskId = this.selectedTask?.id ?? null;
+
+    if (this.selectionPreviewTaskIds !== null) {
+      this.selectionPreviewTaskIds = this.normalizeSelectedTaskIds(
+        this.selectionPreviewTaskIds,
+        index,
+        this.selectionPreviewPrimaryTaskId,
+      );
+      this.selectionPreviewPrimaryTaskId = this.selectionPreviewTaskIds[0] ?? null;
     }
 
     if (this.hasTask(this.hoveredTaskId, index)) {
@@ -639,8 +769,13 @@ class GanttHostImpl implements GanttHostController {
     };
   }
 
-  private updateActiveEdit(edit: GanttTaskEditState | null, event: GanttTaskEditEvent | null): void {
+  private updateActiveEdit(
+    edit: GanttTaskEditState | null,
+    event: GanttTaskEditEvent | null,
+    batch: ActiveEditBatchState | null = null,
+  ): void {
     this.activeEdit = edit;
+    this.activeEditBatch = batch;
     this.lastTaskEditEvent = event;
     this.invalidateEffectiveScene();
     this.refreshSelectionReferences();
@@ -679,6 +814,20 @@ class GanttHostImpl implements GanttHostController {
     return resolved;
   }
 
+  private resolveTaskEditEvents(events: GanttTaskEditEvent[]): GanttTaskEditEvent[] | null {
+    const resolvedEvents: GanttTaskEditEvent[] = [];
+
+    for (const event of events) {
+      const resolved = this.resolveTaskEditEvent(event);
+      if (!resolved) {
+        return null;
+      }
+      resolvedEvents.push(resolved);
+    }
+
+    return resolvedEvents;
+  }
+
   private fireEditStart(event: GanttTaskEditEvent): void {
     this.config.edit.callbacks.onTaskEditStart?.(event);
     this.pluginRuntime.notifyTaskEditStart(event);
@@ -705,6 +854,16 @@ class GanttHostImpl implements GanttHostController {
     return null;
   }
 
+  private getRenderSelectedTaskIds(): string[] {
+    return this.selectionPreviewTaskIds ?? this.selectedTaskIds;
+  }
+
+  private getRenderPrimarySelectedTaskId(): string | null {
+    return this.selectionPreviewTaskIds !== null
+      ? this.selectionPreviewPrimaryTaskId
+      : this.selectedTaskId;
+  }
+
   private async flushDrawQueue(): Promise<void> {
     if (this.drawing || this.disposed) {
       return;
@@ -724,13 +883,21 @@ class GanttHostImpl implements GanttHostController {
     const start = performance.now();
     const scene = this.getRenderScene();
     const index = this.getRenderIndex();
+    const renderSelectedTaskIds = this.getRenderSelectedTaskIds();
     const renderState: RenderState = {
-      selectedTaskId: this.selectedTaskId,
+      selectedTaskId: this.getRenderPrimarySelectedTaskId(),
+      selectedTaskIds: renderSelectedTaskIds,
       hoveredTaskId: this.hoveredTaskId,
-      selectedDependencyId: this.selectedDependencyId,
+      selectedDependencyId: this.selectionPreviewTaskIds !== null ? null : this.selectedDependencyId,
       hoveredDependencyId: this.hoveredDependencyId,
       interactionMode: this.interactionMode,
-      activeEdit: this.activeEdit,
+      activeEdit: this.activeEdit
+        ? {
+            ...this.activeEdit,
+            originalTasks: this.activeEditBatch?.originalTasks ?? [this.activeEdit.originalTask],
+            draftTasks: this.activeEditBatch?.draftTasks ?? [this.activeEdit.draftTask],
+          }
+        : null,
       editAffordances: {
         enabled: this.config.edit.enabled,
         handleWidthPx: this.config.edit.resize.handleWidthPx,
@@ -787,8 +954,12 @@ class GanttHostImpl implements GanttHostController {
   }
 
   private async setSelection(task: GanttTask | null, dependency: DependencyPath | null): Promise<void> {
-    this.selectedTask = task;
-    this.selectedTaskId = task?.id ?? null;
+    this.clearSelectionPreview();
+    if (task) {
+      this.assignTaskSelection([task.id], task.id);
+    } else {
+      this.clearTaskSelection();
+    }
     this.selectedDependency = dependency;
     this.selectedDependencyId = dependency?.id ?? null;
     this.requestRender();
@@ -1020,6 +1191,7 @@ class GanttHostImpl implements GanttHostController {
   getSelection(): PluginSelectionState {
     return {
       selectedTask: this.selectedTask,
+      selectedTasks: this.selectedTasks.slice(),
       hoveredTask: this.hoveredTask,
       selectedDependency: this.selectedDependency,
       hoveredDependency: this.hoveredDependency,
@@ -1036,23 +1208,56 @@ class GanttHostImpl implements GanttHostController {
     void this.setSelection(task, null);
   }
 
+  setSelectionByTaskIds(taskIds: string[], primaryTaskId?: string | null): void {
+    this.clearSelectionPreview();
+    this.assignTaskSelection(taskIds, primaryTaskId ?? taskIds[0] ?? null);
+    this.requestRender();
+    void this.pluginRuntime.notifySelection(this.getSelection());
+  }
+
   setSelectionByScreenPoint(x: number, y: number): void {
     const task = this.taskFromPointer(x, y);
     const dependency = task ? null : this.dependencyFromPointer(x, y);
     void this.setSelection(task, dependency);
   }
 
+  previewSelectionByTaskIds(taskIds: string[], primaryTaskId?: string | null): void {
+    const nextTaskIds = this.normalizeSelectedTaskIds(
+      taskIds,
+      this.getRenderIndex(),
+      primaryTaskId ?? taskIds[0] ?? null,
+    );
+
+    this.selectionPreviewTaskIds = nextTaskIds;
+    this.selectionPreviewPrimaryTaskId = nextTaskIds[0] ?? null;
+    this.requestRender();
+  }
+
+  clearSelectionPreview(): void {
+    if (this.selectionPreviewTaskIds === null && this.selectionPreviewPrimaryTaskId === null) {
+      return;
+    }
+
+    this.selectionPreviewTaskIds = null;
+    this.selectionPreviewPrimaryTaskId = null;
+    this.requestRender();
+  }
+
   setInteractionMode(mode: GanttInteractionMode): void {
-    const nextMode = this.config.edit.enabled ? mode : 'view';
+    const nextMode = mode === 'edit' && !this.config.edit.enabled ? 'view' : mode;
     if (nextMode === this.interactionMode) {
       return;
     }
 
-    if (this.activeEdit?.status === 'preview' && nextMode === 'view') {
+    if (this.activeEdit?.status === 'preview' && nextMode !== 'edit') {
       this.cancelActiveEdit();
     }
 
     this.interactionMode = nextMode;
+    this.canvas.dataset.mode = this.interactionMode;
+    if (nextMode !== 'select') {
+      this.clearSelectionPreview();
+    }
     this.requestRender();
     this.pluginRuntime.notifyEditModeChange(this.interactionMode);
   }
@@ -1062,95 +1267,158 @@ class GanttHostImpl implements GanttHostController {
       return;
     }
 
-    const event = this.lastTaskEditEvent;
-    this.updateActiveEdit(null, null);
-    if (event) {
+    const events = this.activeEditBatch?.events ?? (this.lastTaskEditEvent ? [this.lastTaskEditEvent] : []);
+    this.updateActiveEdit(null, null, null);
+    for (const event of events) {
       this.fireEditCancel(event);
     }
   }
 
   previewTaskEdit(event: GanttTaskEditEvent): GanttTaskEditEvent | null {
+    const resolvedEvents = this.previewTaskEdits([event]);
+    return resolvedEvents?.[0] ?? null;
+  }
+
+  previewTaskEdits(events: GanttTaskEditEvent[]): GanttTaskEditEvent[] | null {
     if (!this.config.edit.enabled || this.activeEdit?.status === 'committing') {
       return null;
     }
 
-    const resolved = this.resolveTaskEditEvent(event);
-    if (!resolved) {
+    if (events.length === 0) {
+      return null;
+    }
+
+    const resolvedEvents = this.resolveTaskEditEvents(events);
+    if (!resolvedEvents) {
+      return null;
+    }
+
+    const primaryTaskId = events[0]?.taskId ?? resolvedEvents[0]?.taskId ?? null;
+    const primaryEvent = resolvedEvents.find((candidate) => candidate.taskId === primaryTaskId) ?? resolvedEvents[0];
+    if (!primaryEvent) {
       return null;
     }
 
     const isStarting = !this.activeEdit;
     const nextEdit: GanttTaskEditState = {
-      taskId: resolved.taskId,
-      operation: resolved.operation,
-      originalTask: this.cloneTask(resolved.originalTask),
-      draftTask: this.cloneTask(resolved.proposedTask),
+      taskId: primaryEvent.taskId,
+      operation: primaryEvent.operation,
+      originalTask: this.cloneTask(primaryEvent.originalTask),
+      draftTask: this.cloneTask(primaryEvent.proposedTask),
       status: 'preview',
     };
+    const batch: ActiveEditBatchState = {
+      primaryTaskId: primaryEvent.taskId,
+      events: resolvedEvents.map((candidate) => createTaskEditEvent({
+        operation: candidate.operation,
+        originalTask: candidate.originalTask,
+        proposedTask: candidate.proposedTask,
+        previousDraftTask: candidate.previousDraftTask,
+        pointer: candidate.pointer,
+        snap: candidate.snap,
+      })),
+      originalTasks: resolvedEvents.map((candidate) => this.cloneTask(candidate.originalTask)),
+      draftTasks: resolvedEvents.map((candidate) => this.cloneTask(candidate.proposedTask)),
+    };
 
-    this.selectedTaskId = resolved.taskId;
+    this.clearSelectionPreview();
+    this.selectedTaskIds = resolvedEvents.map((candidate) => candidate.taskId);
+    this.selectedTaskId = primaryEvent.taskId;
     this.selectedDependency = null;
     this.selectedDependencyId = null;
-    this.selectedTask = nextEdit.draftTask;
-    this.updateActiveEdit(nextEdit, resolved);
+    this.updateActiveEdit(nextEdit, primaryEvent, batch);
 
     if (isStarting) {
-      this.fireEditStart(resolved);
+      for (const resolvedEvent of resolvedEvents) {
+        this.fireEditStart(resolvedEvent);
+      }
     }
-    this.fireEditPreview(resolved);
-    return resolved;
+    for (const resolvedEvent of resolvedEvents) {
+      this.fireEditPreview(resolvedEvent);
+    }
+    return resolvedEvents;
   }
 
   async commitActiveEdit(event?: GanttTaskEditEvent | null): Promise<boolean> {
+    return this.commitTaskEdits(event ? [event] : null);
+  }
+
+  async commitTaskEdits(events?: GanttTaskEditEvent[] | null): Promise<boolean> {
     const activeEdit = this.activeEdit;
-    const commitEvent = event ?? this.lastTaskEditEvent;
-    if (!activeEdit || !commitEvent) {
+    const commitEvents = events ?? this.activeEditBatch?.events ?? (this.lastTaskEditEvent ? [this.lastTaskEditEvent] : null);
+    if (!activeEdit || !commitEvents || commitEvents.length === 0) {
       return false;
     }
 
-    const resolved = this.resolveTaskEditEvent(commitEvent);
-    if (!resolved) {
-      this.updateActiveEdit(null, null);
-      this.fireEditCancel(commitEvent);
+    const resolvedEvents = this.resolveTaskEditEvents(commitEvents);
+    if (!resolvedEvents) {
+      this.updateActiveEdit(null, null, null);
+      for (const commitEvent of commitEvents) {
+        this.fireEditCancel(commitEvent);
+      }
+      return false;
+    }
+    const primaryEvent = resolvedEvents.find((candidate) => candidate.taskId === activeEdit.taskId) ?? resolvedEvents[0];
+    if (!primaryEvent) {
       return false;
     }
 
     this.activeEdit = {
-      taskId: resolved.taskId,
-      operation: resolved.operation,
-      originalTask: this.cloneTask(resolved.originalTask),
-      draftTask: this.cloneTask(resolved.proposedTask),
+      taskId: primaryEvent.taskId,
+      operation: primaryEvent.operation,
+      originalTask: this.cloneTask(primaryEvent.originalTask),
+      draftTask: this.cloneTask(primaryEvent.proposedTask),
       status: 'committing',
     };
-    this.lastTaskEditEvent = resolved;
+    this.activeEditBatch = {
+      primaryTaskId: primaryEvent.taskId,
+      events: resolvedEvents.map((candidate) => createTaskEditEvent({
+        operation: candidate.operation,
+        originalTask: candidate.originalTask,
+        proposedTask: candidate.proposedTask,
+        previousDraftTask: candidate.previousDraftTask,
+        pointer: candidate.pointer,
+        snap: candidate.snap,
+      })),
+      originalTasks: resolvedEvents.map((candidate) => this.cloneTask(candidate.originalTask)),
+      draftTasks: resolvedEvents.map((candidate) => this.cloneTask(candidate.proposedTask)),
+    };
+    this.lastTaskEditEvent = primaryEvent;
     this.invalidateEffectiveScene();
     this.requestRender();
-    this.pluginRuntime.notifyTaskEditCommit(resolved);
+    for (const resolvedEvent of resolvedEvents) {
+      this.pluginRuntime.notifyTaskEditCommit(resolvedEvent);
+    }
 
     try {
-      const result = this.config.edit.callbacks.onTaskEditCommit
-        ? await this.config.edit.callbacks.onTaskEditCommit(resolved)
-        : resolved.proposedTask;
-      if (result === false) {
-        this.updateActiveEdit(null, null);
-        this.fireEditCancel(resolved);
-        return false;
+      const appliedTasks: GanttTask[] = [];
+      for (const resolvedEvent of resolvedEvents) {
+        const result = this.config.edit.callbacks.onTaskEditCommit
+          ? await this.config.edit.callbacks.onTaskEditCommit(resolvedEvent)
+          : resolvedEvent.proposedTask;
+        if (result === false) {
+          this.updateActiveEdit(null, null, null);
+          for (const cancelEvent of resolvedEvents) {
+            this.fireEditCancel(cancelEvent);
+          }
+          return false;
+        }
+
+        appliedTasks.push(this.cloneTask({
+          ...result,
+          id: resolvedEvent.taskId,
+        }));
       }
 
-      const appliedTask = this.cloneTask({
-        ...result,
-        id: resolved.taskId,
-      });
-      this.replaceCommittedScene(replaceTaskInScene(this.scene, appliedTask));
-      this.selectedTaskId = appliedTask.id;
-      this.selectedDependency = null;
-      this.selectedDependencyId = null;
-      this.selectedTask = this.index.byId.get(appliedTask.id) ?? appliedTask;
-      this.updateActiveEdit(null, null);
+      this.replaceCommittedScene(replaceTasksInScene(this.scene, appliedTasks));
+      this.assignTaskSelection(appliedTasks.map((task) => task.id), primaryEvent.taskId);
+      this.updateActiveEdit(null, null, null);
       return true;
     } catch {
-      this.updateActiveEdit(null, null);
-      this.fireEditCancel(resolved);
+      this.updateActiveEdit(null, null, null);
+      for (const cancelEvent of resolvedEvents) {
+        this.fireEditCancel(cancelEvent);
+      }
       return false;
     }
   }
@@ -1174,6 +1442,22 @@ class GanttHostImpl implements GanttHostController {
 
   pickTaskAtScreen(x: number, y: number): GanttTask | null {
     return this.taskFromPointer(x, y);
+  }
+
+  pickTasksInScreenRect(x0: number, y0: number, x1: number, y1: number): GanttTask[] {
+    return pickTasksInScreenRectCore(
+      this.getRenderScene(),
+      this.getRenderIndex(),
+      this.camera,
+      x0,
+      y0,
+      x1,
+      y1,
+      {
+        rowPitch: this.config.render.rowPitch,
+        barHeight: this.config.render.barHeight,
+      },
+    );
   }
 
   pickDependencyAtScreen(x: number, y: number): DependencyPath | null {

@@ -4,6 +4,7 @@ import {
   normalizeConfig,
   resolveTaskEditDraft,
   resolveTaskEditHitTarget,
+  resolveTaskMoveDrafts,
 } from '@gantt/gantt-core';
 
 describe('edit helpers', () => {
@@ -109,6 +110,37 @@ describe('edit helpers', () => {
     expect(offDraft.draftTask.end).toBeCloseTo(16.4);
     expect(incrementDraft.draftTask.start).toBe(14);
     expect(incrementDraft.draftTask.end).toBe(19);
+  });
+
+  it('moves a selection as a group using the primary task snap delta', () => {
+    const editConfig = normalizeConfig({
+      edit: {
+        enabled: true,
+        snap: { mode: 'day' },
+      },
+    }).edit;
+    const tasks = [
+      { id: 'a', rowIndex: 1, start: 10.2, end: 18.2, label: 'Task A' },
+      { id: 'b', rowIndex: 3, start: 20.2, end: 24.2, label: 'Task B' },
+    ];
+
+    const result = resolveTaskMoveDrafts({
+      tasks,
+      primaryTaskId: 'a',
+      startPointer: { screenX: 100, screenY: 30, worldX: 10.2, worldY: 31 },
+      pointer: { screenX: 220, screenY: 86, worldX: 17.6, worldY: 87 },
+      rowPitch: 28,
+      rowCount: 6,
+      editConfig,
+    });
+
+    expect(result.draftTasks.map((task) => task.id)).toEqual(['a', 'b']);
+    expect(result.draftTasks[0]?.start).toBe(18);
+    expect(result.draftTasks[0]?.end).toBe(26);
+    expect(result.draftTasks[0]?.rowIndex).toBe(3);
+    expect(result.draftTasks[1]?.start).toBe(28);
+    expect(result.draftTasks[1]?.end).toBe(32);
+    expect(result.draftTasks[1]?.rowIndex).toBe(5);
   });
 
   it('indexes empty labeled rows as valid drop targets', () => {

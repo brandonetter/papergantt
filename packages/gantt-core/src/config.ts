@@ -24,7 +24,7 @@ import type {
 } from './types';
 
 export const DEFAULT_STATUS_TEXT =
-  'Use Day/Week/Month/Quarter/Year to snap scale. Drag to pan. Wheel to scroll. Ctrl + wheel zooms time around the cursor. Click to select. Press E to toggle edit mode when enabled.';
+  'Use Day/Week/Month/Quarter/Year to snap scale. Drag in view mode to pan, drag in select mode to marquee-select, and drag in edit mode to move the current selection or resize a single task. Wheel to scroll. Ctrl + wheel zooms time around the cursor. Press V, S, or E to switch modes when enabled.';
 
 export const DEFAULT_UI_CONFIG: Required<UiConfig> = {
   showHud: true,

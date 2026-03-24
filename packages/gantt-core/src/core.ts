@@ -1,5 +1,5 @@
 import type { FontAtlas, GlyphSink, TextLayoutEngine } from './font';
-import type { GanttFontConfig } from './types';
+import type { GanttFontConfig, GanttInteractionMode } from './types';
 
 export type GanttTask = {
   id: string;
@@ -69,15 +69,18 @@ export type FrameScene = {
 
 export type RenderState = {
   selectedTaskId: string | null;
+  selectedTaskIds?: readonly string[] | null;
   hoveredTaskId: string | null;
   selectedDependencyId?: string | null;
   hoveredDependencyId?: string | null;
-  interactionMode?: 'view' | 'edit';
+  interactionMode?: GanttInteractionMode;
   activeEdit?: {
     taskId: string;
     operation: 'move' | 'resize-start' | 'resize-end';
     originalTask: GanttTask;
     draftTask: GanttTask;
+    originalTasks?: GanttTask[];
+    draftTasks?: GanttTask[];
     status: 'preview' | 'committing';
   } | null;
   editAffordances?: {
@@ -846,6 +849,64 @@ export function pickTaskAtPoint(
   return null;
 }
 
+export function pickTasksInScreenRect(
+  scene: GanttScene,
+  index: TaskIndex,
+  camera: CameraState,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  options: Pick<FrameOptions, 'rowPitch' | 'barHeight'> = DEFAULT_OPTIONS,
+): GanttTask[] {
+  const [worldX0, worldY0] = screenToWorld(camera, x0, y0);
+  const [worldX1, worldY1] = screenToWorld(camera, x1, y1);
+  const minX = Math.min(worldX0, worldX1);
+  const maxX = Math.max(worldX0, worldX1);
+  const minY = Math.min(worldY0, worldY1);
+  const maxY = Math.max(worldY0, worldY1);
+
+  if (index.rowCount === 0 || maxX < minX || maxY < minY) {
+    return [];
+  }
+
+  const rowStart = clamp(Math.floor(minY / options.rowPitch), 0, Math.max(0, index.rowCount - 1));
+  const rowEnd = clamp(Math.floor(maxY / options.rowPitch), 0, Math.max(0, index.rowCount - 1));
+  const selected: GanttTask[] = [];
+
+  for (let row = rowStart; row <= rowEnd; row += 1) {
+    const rowTasks = index.rows[row];
+    if (!rowTasks || rowTasks.length === 0) {
+      continue;
+    }
+
+    const startIndex = Math.max(
+      0,
+      lowerBound(
+        rowTasks,
+        minX - index.rowMaxDuration[row],
+        (task) => task.start,
+      ),
+    );
+
+    for (let i = startIndex; i < rowTasks.length; i += 1) {
+      const task = rowTasks[i];
+      if (task.start > maxX) {
+        break;
+      }
+
+      const rect = taskWorldRect(task, options.rowPitch, options.barHeight);
+      if (rect.x > maxX || rect.x + rect.w < minX || rect.y > maxY || rect.y + rect.h < minY) {
+        continue;
+      }
+
+      selected.push(task);
+    }
+  }
+
+  return selected;
+}
+
 function paletteForRow(
   rowIndex: number,
   display: NormalizedGanttDisplayConfig['tasks'],
@@ -917,12 +978,12 @@ function computeHeaderOcclusionAlpha(
 
 function taskFillColor(
   task: GanttTask,
-  selectedTaskId: string | null,
+  selectedTaskIds: ReadonlySet<string>,
   hoveredTaskId: string | null,
   display: NormalizedGanttDisplayConfig['tasks'],
 ): GanttColor {
   const [r, g, b, a] = paletteForRow(task.rowIndex, display);
-  const selected = task.id === selectedTaskId;
+  const selected = selectedTaskIds.has(task.id);
   const hovered = task.id === hoveredTaskId;
   const boost = selected ? display.selectedBoost : hovered ? display.hoveredBoost : 1;
   const alpha = selected
@@ -937,6 +998,22 @@ function taskFillColor(
     clamp(b * boost, 0, 1),
     a * alpha,
   ];
+}
+
+function buildSelectedTaskIdSet(renderState: RenderState): Set<string> {
+  const taskIds = new Set<string>();
+
+  if (renderState.selectedTaskId) {
+    taskIds.add(renderState.selectedTaskId);
+  }
+
+  for (const taskId of renderState.selectedTaskIds ?? []) {
+    if (taskId) {
+      taskIds.add(taskId);
+    }
+  }
+
+  return taskIds;
 }
 
 function mixColor(left: GanttColor, right: GanttColor, amount: number): GanttColor {
@@ -1518,10 +1595,17 @@ export function buildFrame(
 ): FrameScene {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const activeEdit = renderState.activeEdit ?? null;
+  const selectedTaskIds = buildSelectedTaskIdSet(renderState);
+  const activeDraftTasks = activeEdit?.draftTasks ?? (activeEdit ? [activeEdit.draftTask] : []);
+  const activeOriginalTasks = activeEdit?.originalTasks ?? (activeEdit ? [activeEdit.originalTask] : []);
+  const dropTargetRowIndices = new Set(activeDraftTasks.map((task) => task.rowIndex));
   const editAffordances = renderState.editAffordances;
+  const showSelectionOutlines =
+    renderState.interactionMode === 'select' ||
+    (renderState.interactionMode === 'edit' && editAffordances?.enabled === true);
   const showEditAffordances =
     renderState.interactionMode === 'edit' && editAffordances?.enabled === true;
-  const dropTargetRowIndex = activeEdit?.draftTask.rowIndex ?? null;
+  const showResizeHandles = selectedTaskIds.size === 1;
   const baseFontPx = Math.max(1, Math.round(font.sizePx ?? 12));
   const backgroundSolids = new SolidInstanceWriter(
     Math.max(1024, index.rowCount * 4),
@@ -1605,7 +1689,7 @@ export function buildFrame(
       0,
       0,
     );
-    if (showEditAffordances && dropTargetRowIndex === row) {
+    if (showEditAffordances && dropTargetRowIndices.has(row)) {
       const highlight = mixColor([r, g, b, a], [0.4, 0.74, 0.96, 0.22], 0.6);
       backgroundSolids.appendRect(
         window.start,
@@ -1659,7 +1743,8 @@ export function buildFrame(
       }
 
       visibleTasks += 1;
-      const selected = task.id === renderState.selectedTaskId;
+      const selected = selectedTaskIds.has(task.id);
+      const primarySelected = task.id === renderState.selectedTaskId;
       const hovered = task.id === renderState.hoveredTaskId;
       const defaultEmphasis = selected ? 1 : hovered ? 0.45 : 0.1;
       const pluginStyle =
@@ -1668,7 +1753,7 @@ export function buildFrame(
         pluginStyle?.fill ??
         taskFillColor(
           task,
-          renderState.selectedTaskId,
+          selectedTaskIds,
           renderState.hoveredTaskId,
           display.tasks,
         );
@@ -1800,7 +1885,7 @@ export function buildFrame(
         }
       }
 
-      if (showEditAffordances && selected) {
+      if (showSelectionOutlines && selected) {
         const rect = taskWorldRect(task, config.rowPitch, config.barHeight);
         const outlineColor = mixColor(fill, [1, 1, 1, 1], 0.42);
         appendRectOutline(
@@ -1808,11 +1893,17 @@ export function buildFrame(
           camera,
           rect,
           [outlineColor[0], outlineColor[1], outlineColor[2], 0.92],
-          activeEdit?.taskId === task.id ? 3 : 2,
+          primarySelected && activeEdit?.taskId === task.id ? 3 : 2,
           display.tasks.barRadiusPx,
         );
 
-        if (!task.milestone && editAffordances?.resizeEnabled) {
+        if (
+          showEditAffordances &&
+          showResizeHandles &&
+          primarySelected &&
+          !task.milestone &&
+          editAffordances?.resizeEnabled
+        ) {
           const handleColor = mixColor(fill, [1, 1, 1, 1], 0.55);
           appendResizeHandles(
             foregroundSolids,
@@ -1828,22 +1919,24 @@ export function buildFrame(
   }
 
   if (showEditAffordances && activeEdit) {
-    const ghostBase = taskFillColor(
-      activeEdit.originalTask,
-      renderState.selectedTaskId,
-      renderState.hoveredTaskId,
-      display.tasks,
-    );
-    const ghostFill = mixColor(ghostBase, [1, 1, 1, 0.18], 0.24);
-    ghostFill[3] = 0.18;
-    appendTaskPrimitive(
-      foregroundSolids,
-      activeEdit.originalTask,
-      config,
-      ghostFill,
-      0.08,
-      display.tasks.barRadiusPx,
-    );
+    for (const originalTask of activeOriginalTasks) {
+      const ghostBase = taskFillColor(
+        originalTask,
+        selectedTaskIds,
+        renderState.hoveredTaskId,
+        display.tasks,
+      );
+      const ghostFill = mixColor(ghostBase, [1, 1, 1, 0.18], 0.24);
+      ghostFill[3] = 0.18;
+      appendTaskPrimitive(
+        foregroundSolids,
+        originalTask,
+        config,
+        ghostFill,
+        0.08,
+        display.tasks.barRadiusPx,
+      );
+    }
   }
 
   foregroundSolids.appendRect(
@@ -1925,7 +2018,7 @@ export function buildFrame(
   }
 
   for (const task of scene.tasks) {
-    const taskSelected = task.id === renderState.selectedTaskId;
+    const taskSelected = selectedTaskIds.has(task.id);
     const taskHovered = task.id === renderState.hoveredTaskId;
 
     for (const depId of task.dependencies ?? []) {
@@ -1934,7 +2027,7 @@ export function buildFrame(
         continue;
       }
 
-      const predecessorSelected = predecessor.id === renderState.selectedTaskId;
+      const predecessorSelected = selectedTaskIds.has(predecessor.id);
       const predecessorHovered = predecessor.id === renderState.hoveredTaskId;
       const dependencyId = `${depId}->${task.id}`;
       const lineSelected = dependencyId === renderState.selectedDependencyId;
