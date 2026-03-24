@@ -9,12 +9,16 @@
   "scripts": {
     "dev": "npm run dev -w @gantt/demo",
     "build": "npm run build -w @gantt/demo",
+    "build:font:demo": "npm run build:font:demo:regular && npm run build:font:demo:bold",
+    "build:font:demo:regular": "node scripts/generate-msdf-font.mjs assets/fonts/atkinson-hyperlegible/AtkinsonHyperlegible-Regular.ttf apps/demo/public/fonts/atkinson-hyperlegible-400-msdf",
+    "build:font:demo:bold": "node scripts/generate-msdf-font.mjs assets/fonts/atkinson-hyperlegible/AtkinsonHyperlegible-Bold.ttf apps/demo/public/fonts/atkinson-hyperlegible-700-msdf",
     "preview": "npm run preview -w @gantt/demo",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "msdf-bmfont-xml": "^2.8.0",
     "typescript": "^5.8.0",
     "vite": "^6.0.0",
     "vitest": "^2.0.0"

@@ -2,6 +2,7 @@ import type { FrameOptions } from './core';
 import { createSampleScene } from './data';
 import type {
   GanttConfig,
+  GanttFontConfig,
   NormalizedGanttConfig,
   UiConfig,
   DataConfig,
@@ -52,6 +53,12 @@ export const DEFAULT_FEATURES: Required<GanttFeatureFlags> = {
 };
 
 export const DEFAULT_PLUGIN_SECURITY_POLICY: PluginSecurityPolicy = {};
+export const DEFAULT_FONT_CONFIG: GanttFontConfig = {
+  family: undefined,
+  weight: 600,
+  msdfManifestUrl: undefined,
+  msdfManifestUrls: undefined,
+};
 
 export const DEFAULT_CONTAINER_CONFIG: NormalizedGanttContainerConfig = {
   width: undefined,
@@ -153,12 +160,22 @@ function mergePlugins(plugins: PluginConfig[] | undefined): PluginConfig[] {
   }));
 }
 
+function mergeFontConfig(font: GanttFontConfig | undefined): GanttFontConfig {
+  return {
+    family: font?.family ?? DEFAULT_FONT_CONFIG.family,
+    weight: font?.weight ?? DEFAULT_FONT_CONFIG.weight,
+    msdfManifestUrl: font?.msdfManifestUrl ?? DEFAULT_FONT_CONFIG.msdfManifestUrl,
+    msdfManifestUrls: font?.msdfManifestUrls ? { ...font.msdfManifestUrls } : DEFAULT_FONT_CONFIG.msdfManifestUrls,
+  };
+}
+
 export function normalizeConfig(config: GanttConfig = {}): NormalizedGanttConfig {
   return {
     data: mergeDataConfig(config.data),
     render: { ...DEFAULT_RENDER_OPTIONS, ...(config.render ?? {}) },
     ui: mergeUiConfig(config.ui),
     container: mergeContainerConfig(config.container),
+    font: mergeFontConfig(config.font),
     plugins: mergePlugins(config.plugins),
     modules: mergeModulesConfig(config.modules),
     features: mergeFeatures(config.features),

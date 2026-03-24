@@ -36,6 +36,17 @@ function pluginUrl(path: string): string {
   return new URL(path, window.location.href).href;
 }
 
+function fontUrl(path: string): string {
+  return new URL(path, window.location.href).href;
+}
+
+function demoMsdfManifestUrls() {
+  return {
+    400: fontUrl('./fonts/atkinson-hyperlegible-400-msdf.json'),
+    700: fontUrl('./fonts/atkinson-hyperlegible-700-msdf.json'),
+  };
+}
+
 function buildPage(scene: GanttScene): string {
   return `
     <main class="demo-page">
@@ -141,6 +152,10 @@ async function boot(): Promise<void> {
       type: 'static',
       scene: cloneScene(sharedScene),
     },
+    font: {
+      weight: 400,
+      msdfManifestUrls: demoMsdfManifestUrls(),
+    },
     container: {
       height: 500,
       toolbar: {
@@ -158,6 +173,10 @@ async function boot(): Promise<void> {
     data: {
       type: 'static',
       scene: cloneScene(sharedScene),
+    },
+    font: {
+      weight: 700,
+      msdfManifestUrls: demoMsdfManifestUrls(),
     },
     container: {
       height: 500,

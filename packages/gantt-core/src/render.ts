@@ -152,6 +152,7 @@ precision highp float;
 uniform sampler2D uAtlas;
 uniform int uMode;
 uniform float uPxRange;
+uniform vec2 uAtlasSize;
 
 in vec2 vUv;
 in vec4 vColor;
@@ -162,13 +163,19 @@ float median(vec3 v) {
   return max(min(v.r, v.g), min(max(v.r, v.g), v.b));
 }
 
+float screenPxRange() {
+  vec2 unitRange = vec2(uPxRange) / uAtlasSize;
+  vec2 screenTexSize = vec2(1.0) / fwidth(vUv);
+  return max(0.5 * dot(unitRange, screenTexSize), 1.0);
+}
+
 void main() {
   vec4 tex = texture(uAtlas, vUv);
   float alpha = tex.a;
 
   if (uMode == 1) {
     float sd = median(tex.rgb);
-    float screenPxDistance = uPxRange * (sd - 0.5);
+    float screenPxDistance = screenPxRange() * (sd - 0.5);
     alpha = clamp(screenPxDistance + 0.5, 0.0, 1.0);
   }
 
@@ -462,6 +469,7 @@ export class GanttRenderer {
       const atlasUniform = gl.getUniformLocation(this.textProgram, 'uAtlas');
       const modeUniform = gl.getUniformLocation(this.textProgram, 'uMode');
       const rangeUniform = gl.getUniformLocation(this.textProgram, 'uPxRange');
+      const sizeUniform = gl.getUniformLocation(this.textProgram, 'uAtlasSize');
 
       if (atlasUniform) {
         gl.uniform1i(atlasUniform, 0);
@@ -471,6 +479,9 @@ export class GanttRenderer {
       }
       if (rangeUniform) {
         gl.uniform1f(rangeUniform, atlas.pxRange);
+      }
+      if (sizeUniform) {
+        gl.uniform2f(sizeUniform, atlas.width, atlas.height);
       }
 
       gl.bindVertexArray(this.textVao);

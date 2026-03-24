@@ -177,11 +177,21 @@ export type GanttFeatureFlags = {
   allowAdvancedPlugins?: boolean;
 };
 
+export type GanttFontWeight = number | `${number}` | 'regular' | 'medium' | 'semibold' | 'bold';
+
+export type GanttFontConfig = {
+  family?: string;
+  weight?: GanttFontWeight;
+  msdfManifestUrl?: string;
+  msdfManifestUrls?: Record<string, string>;
+};
+
 export type GanttConfig = {
   data?: DataConfig;
   render?: Partial<FrameOptions>;
   ui?: UiConfig;
   container?: GanttContainerConfig;
+  font?: GanttFontConfig;
   plugins?: PluginConfig[];
   modules?: ModulesConfig;
   features?: GanttFeatureFlags;
@@ -205,6 +215,7 @@ export type NormalizedGanttConfig = {
   render: FrameOptions;
   ui: Required<UiConfig>;
   container: NormalizedGanttContainerConfig;
+  font: GanttFontConfig;
   plugins: PluginConfig[];
   modules: { builtins: Array<'camera-controls' | 'selection' | 'hud-inspector' | 'toolbar'> };
   features: Required<GanttFeatureFlags>;

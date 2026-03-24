@@ -51,4 +51,24 @@ describe('config normalization', () => {
     expect(config.container.toolbar.position).toBe('bottom');
     expect(config.container.toolbar.height).toBe(64);
   });
+
+  it('preserves font weight and per-weight manifest mappings', () => {
+    const config = normalizeConfig({
+      font: {
+        family: 'Atkinson Hyperlegible',
+        weight: 700,
+        msdfManifestUrls: {
+          400: '/fonts/atkinson-hyperlegible-400-msdf.json',
+          700: '/fonts/atkinson-hyperlegible-700-msdf.json',
+        },
+      },
+    });
+
+    expect(config.font.family).toBe('Atkinson Hyperlegible');
+    expect(config.font.weight).toBe(700);
+    expect(config.font.msdfManifestUrls).toEqual({
+      400: '/fonts/atkinson-hyperlegible-400-msdf.json',
+      700: '/fonts/atkinson-hyperlegible-700-msdf.json',
+    });
+  });
 });

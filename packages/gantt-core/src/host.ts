@@ -19,7 +19,7 @@ import {
   type TaskIndex,
 } from './core';
 import { normalizeConfig, resolveScene } from './config';
-import { createFallbackFontAtlas, TextLayoutEngine } from './font';
+import { createFallbackFontAtlas, loadMsdfFontAtlas, TextLayoutEngine, type FontAtlas } from './font';
 import { ModuleManager } from './module-manager';
 import { PluginRuntime } from './plugin-runtime';
 import { GanttRenderer } from './render';
@@ -67,6 +67,12 @@ const ZOOM_PRESETS: ZoomPreset[] = [
 
 const DEFAULT_HOME_VISIBLE_DAYS = 28;
 const DEFAULT_HOME_LEAD_DAYS = 3;
+const FONT_WEIGHT_ALIASES: Record<string, string> = {
+  regular: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
+};
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -275,6 +281,25 @@ function createHostCameraState(
   };
 }
 
+function normalizeFontWeight(weight: NormalizedGanttConfig['font']['weight']): string {
+  const key = String(weight ?? 600).toLowerCase();
+  return FONT_WEIGHT_ALIASES[key] ?? key;
+}
+
+function resolveMsdfManifestUrl(font: NormalizedGanttConfig['font']): string | undefined {
+  const normalizedWeight = normalizeFontWeight(font.weight);
+  if (font.msdfManifestUrls?.[normalizedWeight]) {
+    return font.msdfManifestUrls[normalizedWeight];
+  }
+
+  const alias = Object.entries(FONT_WEIGHT_ALIASES).find(([, value]) => value === normalizedWeight)?.[0];
+  if (alias && font.msdfManifestUrls?.[alias]) {
+    return font.msdfManifestUrls[alias];
+  }
+
+  return font.msdfManifestUrl;
+}
+
 function pickSelectedTask(
   scene: GanttScene,
   index: TaskIndex,
@@ -324,8 +349,8 @@ class GanttHostImpl implements GanttHostController {
   private index: TaskIndex = buildTaskIndex([]);
   private dependentsById = new Map<string, GanttTask[]>();
   private readonly config: NormalizedGanttConfig;
-  private readonly atlas = createFallbackFontAtlas();
-  private readonly layout = new TextLayoutEngine(this.atlas);
+  private atlas: FontAtlas;
+  private readonly layout: TextLayoutEngine;
   private readonly gl: WebGL2RenderingContext;
   private readonly renderer: GanttRenderer;
   private camera: CameraState;
@@ -353,6 +378,11 @@ class GanttHostImpl implements GanttHostController {
 
   constructor(root: HTMLElement, config: NormalizedGanttConfig) {
     this.config = config;
+    this.atlas = createFallbackFontAtlas({
+      family: this.config.font.family,
+      weight: normalizeFontWeight(this.config.font.weight),
+    });
+    this.layout = new TextLayoutEngine(this.atlas);
 
     const elements = createAppElements(root, config);
     this.root = elements.root;
@@ -402,6 +432,16 @@ class GanttHostImpl implements GanttHostController {
   async initialize(): Promise<void> {
     const scene = await resolveScene(this.config.data);
     this.scene = scene;
+
+    const manifestUrl = resolveMsdfManifestUrl(this.config.font);
+    if (manifestUrl) {
+      try {
+        this.atlas = await loadMsdfFontAtlas(manifestUrl);
+        this.layout.setAtlas(this.atlas);
+      } catch (error) {
+        console.warn('Failed to load MSDF font atlas, falling back to the built-in alpha atlas.', error);
+      }
+    }
 
     await this.pluginRuntime.load();
     this.scene = await this.pluginRuntime.applySceneHooks(this.scene);
