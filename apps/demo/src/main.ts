@@ -132,7 +132,7 @@ function buildPage(scene: GanttScene): string {
           </div>
           <div class="demo-stat">
             <span class="demo-stat__label">Display API</span>
-            <strong>Baseline, plugin, paper preset, and theme picker</strong>
+            <strong>Baseline, safe plugin, editable plugin, paper preset, and theme picker</strong>
           </div>
         </div>
       </section>
@@ -195,13 +195,41 @@ function buildPage(scene: GanttScene): string {
           </div>
         </article>
 
+        <article class="demo-band demo-band--editable">
+          <div class="demo-band__copy demo-band__copy--accent">
+            <p class="demo-card__eyebrow">Editable API</p>
+            <div class="demo-card__heading">
+              <h2>Commit log with undo</h2>
+              <p>
+                This new plugin treats edit commits as structured data.
+                Each committed move or resize is rendered as JSON in-chart, and the plugin can restore the previous committed task state with one undo button.
+              </p>
+            </div>
+            <ul class="demo-note-list">
+              <li>Loads a second plugin from <code>public/plugins</code></li>
+              <li>Shows before/after commit payloads plus computed change deltas as JSON</li>
+              <li>Uses a plugin module to access the host controller for undo</li>
+              <li>Replays the previous committed task state through <code>replaceScene(...)</code></li>
+            </ul>
+          </div>
+          <div class="demo-band__visual">
+            <div class="demo-chart-frame">
+              <div
+                class="demo-chart demo-chart--editable-plugin"
+                data-demo-mount="editable-plugin"
+                aria-label="Editable API plugin gantt chart"
+              ></div>
+            </div>
+          </div>
+        </article>
+
         <article class="demo-band demo-band--light">
           <div class="demo-band__copy demo-band__copy--light">
             <p class="demo-card__eyebrow">Theme Preset</p>
             <div class="demo-card__heading">
               <h2>Paper light</h2>
               <p>
-                The third section isolates the paper-light theme as a fixed reference.
+                The paper-light section isolates the theme preset as a fixed reference.
                 It keeps the renderer calm, editorial, and tactile without relying on any plugin-specific behavior.
               </p>
             </div>
@@ -228,7 +256,7 @@ function buildPage(scene: GanttScene): string {
             <div class="demo-card__heading">
               <h2>Live preset switching</h2>
               <p>
-                The fourth section turns the new theme presets into an interaction surface.
+                The theme picker section turns the new presets into an interaction surface.
                 Pick a visual language and the chart below remounts with that preset so the differences stay honest to the actual runtime config.
               </p>
             </div>
@@ -280,6 +308,9 @@ async function boot(): Promise<void> {
   const pluginMount = appRoot.querySelector<HTMLElement>(
     '[data-demo-mount="plugin"]',
   );
+  const editablePluginMount = appRoot.querySelector<HTMLElement>(
+    '[data-demo-mount="editable-plugin"]',
+  );
   const lightMount = appRoot.querySelector<HTMLElement>(
     '[data-demo-mount="light"]',
   );
@@ -302,6 +333,7 @@ async function boot(): Promise<void> {
   if (
     !baselineMount ||
     !pluginMount ||
+    !editablePluginMount ||
     !lightMount ||
     !themePickerMount ||
     !(themePickerFrame instanceof HTMLElement) ||
@@ -317,6 +349,7 @@ async function boot(): Promise<void> {
   const themeFrame = themePickerFrame;
   const baselineMountEl = baselineMount;
   const pluginMountEl = pluginMount;
+  const editablePluginMountEl = editablePluginMount;
   const lightMountEl = lightMount;
   const themePickerMountEl = themePickerMount;
   const themeLabelEl = themeLabel;
@@ -380,6 +413,44 @@ async function boot(): Promise<void> {
         options: {
           badgeLabel: 'Safe Plugin Active',
           accentColor: '#66d1ff',
+        },
+      },
+    ],
+  };
+
+  const editablePluginConfig: GanttConfig = {
+    data: {
+      type: 'static',
+      scene: cloneScene(sharedScene),
+    },
+    font: {
+      weight: 700,
+      msdfManifestUrls,
+    },
+    container: {
+      height: 560,
+      toolbar: {
+        position: 'top',
+      },
+    },
+    edit: createDemoEditConfig('day'),
+    ui: {
+      title: 'Editable API plugin',
+      showInspector: false,
+      statusText:
+        'Switch to Edit mode, move or resize a task, then inspect the JSON panel and use Undo Last Change to roll back the most recent commit.',
+    },
+    plugins: [
+      {
+        source: {
+          type: 'esm',
+          url: pluginUrl('./plugins/editable-commit-log-plugin.mjs'),
+        },
+        idHint: 'demo-editable-commit-log',
+        options: {
+          panelLabel: 'Editable API Commit Log',
+          accentColor: '#ff9a5c',
+          maxCommits: 5,
         },
       },
     ],
@@ -470,6 +541,7 @@ async function boot(): Promise<void> {
   try {
     await mountBaselinePreview(activeSnapPreset);
     hosts.push(await mountDemoHost(pluginMountEl, pluginConfig));
+    hosts.push(await mountDemoHost(editablePluginMountEl, editablePluginConfig));
     hosts.push(
       await mountDemoHost(
         lightMountEl,

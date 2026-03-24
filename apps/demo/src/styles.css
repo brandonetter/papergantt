@@ -245,6 +245,12 @@ code {
     var(--chart-shadow);
 }
 
+.demo-chart--editable-plugin {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 154, 92, 0.18),
+    var(--chart-shadow);
+}
+
 .theme-picker {
   display: flex;
   flex-wrap: wrap;
@@ -517,6 +523,106 @@ code {
   color: rgba(234, 244, 251, 0.62);
 }
 
+.editable-plugin-panel {
+  --editable-plugin-accent: #ff9a5c;
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  bottom: 18px;
+  z-index: 6;
+  width: min(360px, calc(100% - 36px));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--editable-plugin-accent) 42%, transparent);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(10, 15, 22, 0.96), rgba(6, 10, 16, 0.94));
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.34);
+  color: #eaf4fb;
+  backdrop-filter: blur(10px);
+}
+
+.editable-plugin-panel__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.editable-plugin-panel__heading {
+  min-width: 0;
+}
+
+.editable-plugin-panel__eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--editable-plugin-accent);
+}
+
+.editable-plugin-panel__title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.editable-plugin-panel__button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--editable-plugin-accent) 52%, transparent);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 154, 92, 0.18), rgba(255, 154, 92, 0.08));
+  color: #fff4ec;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.editable-plugin-panel__button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--editable-plugin-accent) 70%, transparent);
+  background: linear-gradient(180deg, rgba(255, 154, 92, 0.26), rgba(255, 154, 92, 0.12));
+}
+
+.editable-plugin-panel__button:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.editable-plugin-panel__meta {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(234, 244, 251, 0.68);
+}
+
+.editable-plugin-panel__json {
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(4, 8, 12, 0.64);
+  color: #dcecff;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .demo-error {
   max-width: 760px;
   padding: 42px;
@@ -547,7 +653,8 @@ code {
 
   .demo-chart .hud,
   .demo-chart .zoom-toolbar,
-  .plugin-badge {
+  .plugin-badge,
+  .editable-plugin-panel {
     left: 14px;
     right: 14px;
     max-width: none;
@@ -562,6 +669,12 @@ code {
   .plugin-badge {
     top: auto;
     bottom: 72px;
+  }
+
+  .editable-plugin-panel {
+    top: 68px;
+    bottom: 78px;
+    width: auto;
   }
 
   .demo-chart .status-line {
