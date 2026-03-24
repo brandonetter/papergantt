@@ -1,0 +1,259 @@
+/*
+  To add a custom demo theme:
+  1. Add a preset entry in `themes.ts`.
+  2. Add a matching `.gantt-theme--<id>` variable block here.
+*/
+
+.demo-chart-frame--themed {
+  background: var(--theme-frame-bg,
+    linear-gradient(135deg, rgba(8, 12, 18, 0.08), rgba(8, 12, 18, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 243, 232, 0.74)));
+  box-shadow: var(--theme-frame-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.75));
+}
+
+.demo-chart--themed {
+  background: var(--theme-chart-bg,
+    radial-gradient(720px 300px at 18% 0%, rgba(52, 94, 128, 0.22), transparent 60%),
+    linear-gradient(180deg, #101a24 0%, #09111a 100%));
+  box-shadow: var(--theme-chart-shadow, var(--chart-shadow));
+}
+
+.demo-chart--themed .hud,
+.demo-chart--themed .zoom-toolbar,
+.demo-chart--themed .status-line {
+  border-color: var(--theme-overlay-border, rgba(120, 151, 181, 0.22));
+  box-shadow: var(--theme-overlay-shadow, 0 18px 42px rgba(0, 0, 0, 0.28));
+}
+
+.demo-chart--themed .hud {
+  background: var(--theme-hud-bg,
+    linear-gradient(180deg, rgba(13, 20, 30, 0.92), rgba(8, 12, 18, 0.82)));
+}
+
+.demo-chart--themed .hud-title {
+  color: var(--theme-hud-title, #66d1ff);
+}
+
+.demo-chart--themed .hud-grid {
+  color: var(--theme-overlay-ink, #dce8f2);
+}
+
+.demo-chart--themed .hud-grid div:nth-child(odd) {
+  color: var(--theme-overlay-muted, rgba(220, 232, 242, 0.64));
+}
+
+.demo-chart--themed .zoom-toolbar {
+  background: var(--theme-toolbar-bg,
+    linear-gradient(180deg, rgba(20, 29, 40, 0.96), rgba(10, 16, 24, 0.9)));
+  box-shadow: var(--theme-toolbar-shadow,
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 24px rgba(0, 0, 0, 0.24));
+}
+
+.demo-chart--themed .zoom-button {
+  color: var(--theme-button-ink, rgba(222, 232, 241, 0.72));
+}
+
+.demo-chart--themed .zoom-button:hover {
+  background: var(--theme-button-hover-bg, rgba(255, 255, 255, 0.04));
+  color: var(--theme-button-hover-ink, #f3f8fc);
+}
+
+.demo-chart--themed .zoom-button[data-active='true'] {
+  background: var(--theme-button-active-bg,
+    linear-gradient(180deg, rgba(63, 118, 155, 0.34), rgba(34, 74, 103, 0.38)));
+  border-color: var(--theme-button-active-border, rgba(123, 200, 244, 0.52));
+  color: var(--theme-button-active-ink, #f7fcff);
+  box-shadow: var(--theme-button-active-shadow,
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(81, 171, 224, 0.12));
+}
+
+.demo-chart--themed .status-line {
+  background: var(--theme-status-bg,
+    linear-gradient(180deg, rgba(10, 15, 23, 0.76), rgba(7, 10, 16, 0.88)));
+  color: var(--theme-status-ink, rgba(221, 232, 242, 0.72));
+}
+
+.gantt-theme--standard {
+  --theme-frame-bg:
+    linear-gradient(135deg, rgba(8, 12, 18, 0.08), rgba(8, 12, 18, 0.02)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(248, 243, 232, 0.74));
+  --theme-chart-bg:
+    radial-gradient(720px 300px at 18% 0%, rgba(52, 94, 128, 0.22), transparent 60%),
+    linear-gradient(180deg, #101a24 0%, #09111a 100%);
+}
+
+.gantt-theme--paper-light {
+  --theme-frame-bg:
+    linear-gradient(135deg, rgba(201, 175, 137, 0.12), rgba(255, 255, 255, 0.48)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 239, 226, 0.84));
+  --theme-chart-bg:
+    radial-gradient(720px 300px at 18% 0%, rgba(220, 196, 160, 0.24), transparent 62%),
+    linear-gradient(180deg, #fbf4e8 0%, #f1e7d7 100%);
+  --theme-chart-shadow:
+    inset 0 0 0 1px rgba(140, 116, 85, 0.14),
+    0 24px 56px rgba(82, 54, 26, 0.16);
+  --theme-overlay-border: rgba(135, 111, 83, 0.18);
+  --theme-overlay-shadow: 0 18px 36px rgba(76, 52, 29, 0.12);
+  --theme-hud-bg: linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(245, 235, 217, 0.9));
+  --theme-hud-title: #b1692c;
+  --theme-overlay-ink: #49382a;
+  --theme-overlay-muted: rgba(73, 56, 42, 0.62);
+  --theme-toolbar-bg:
+    linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(242, 232, 214, 0.94));
+  --theme-toolbar-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 8px 20px rgba(82, 54, 26, 0.12);
+  --theme-button-ink: rgba(86, 64, 41, 0.74);
+  --theme-button-hover-bg: rgba(111, 86, 55, 0.08);
+  --theme-button-hover-ink: #35261a;
+  --theme-button-active-bg: linear-gradient(180deg, rgba(201, 148, 84, 0.26), rgba(163, 119, 68, 0.3));
+  --theme-button-active-border: rgba(166, 111, 52, 0.34);
+  --theme-button-active-ink: #342419;
+  --theme-button-active-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.66),
+    0 0 0 1px rgba(184, 129, 66, 0.08);
+  --theme-status-bg: linear-gradient(180deg, rgba(255, 250, 243, 0.9), rgba(242, 232, 214, 0.94));
+  --theme-status-ink: rgba(79, 61, 43, 0.8);
+}
+
+.gantt-theme--paper-dark {
+  --theme-frame-bg:
+    linear-gradient(135deg, rgba(96, 72, 49, 0.18), rgba(21, 14, 12, 0.82)),
+    linear-gradient(180deg, rgba(46, 31, 24, 0.96), rgba(24, 17, 14, 0.96));
+  --theme-frame-shadow:
+    inset 0 0 0 1px rgba(255, 243, 223, 0.06),
+    0 24px 58px rgba(17, 10, 7, 0.34);
+  --theme-chart-bg:
+    radial-gradient(720px 300px at 18% 0%, rgba(194, 157, 95, 0.14), transparent 60%),
+    linear-gradient(180deg, #221711 0%, #17100d 100%);
+  --theme-chart-shadow:
+    inset 0 0 0 1px rgba(208, 177, 130, 0.12),
+    0 24px 56px rgba(11, 7, 5, 0.36);
+  --theme-overlay-border: rgba(182, 153, 114, 0.16);
+  --theme-overlay-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+  --theme-hud-bg: linear-gradient(180deg, rgba(42, 29, 22, 0.96), rgba(25, 18, 15, 0.92));
+  --theme-hud-title: #d0b182;
+  --theme-overlay-ink: #f4e9d8;
+  --theme-overlay-muted: rgba(244, 233, 216, 0.62);
+  --theme-toolbar-bg: linear-gradient(180deg, rgba(48, 33, 24, 0.98), rgba(26, 18, 14, 0.94));
+  --theme-toolbar-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 24px rgba(0, 0, 0, 0.28);
+  --theme-button-ink: rgba(244, 233, 216, 0.72);
+  --theme-button-hover-bg: rgba(208, 177, 130, 0.08);
+  --theme-button-hover-ink: #fff2dd;
+  --theme-button-active-bg: linear-gradient(180deg, rgba(126, 101, 77, 0.44), rgba(92, 71, 54, 0.4));
+  --theme-button-active-border: rgba(208, 177, 130, 0.34);
+  --theme-button-active-ink: #fff3e0;
+  --theme-status-bg: linear-gradient(180deg, rgba(39, 27, 21, 0.9), rgba(23, 16, 13, 0.94));
+  --theme-status-ink: rgba(240, 220, 194, 0.76);
+}
+
+.gantt-theme--vscode {
+  --theme-frame-bg:
+    linear-gradient(135deg, rgba(50, 50, 50, 0.18), rgba(25, 25, 25, 0.88)),
+    linear-gradient(180deg, rgba(43, 43, 43, 0.94), rgba(28, 28, 28, 0.94));
+  --theme-chart-bg:
+    radial-gradient(720px 300px at 18% 0%, rgba(55, 148, 255, 0.16), transparent 58%),
+    linear-gradient(180deg, #252526 0%, #1e1e1e 100%);
+  --theme-overlay-border: rgba(76, 76, 76, 0.52);
+  --theme-hud-bg: linear-gradient(180deg, rgba(37, 37, 38, 0.96), rgba(30, 30, 30, 0.94));
+  --theme-hud-title: #3794ff;
+  --theme-overlay-ink: #d4d4d4;
+  --theme-overlay-muted: rgba(212, 212, 212, 0.58);
+  --theme-toolbar-bg: linear-gradient(180deg, rgba(43, 43, 43, 0.98), rgba(32, 32, 32, 0.94));
+  --theme-button-ink: rgba(212, 212, 212, 0.74);
+  --theme-button-hover-bg: rgba(55, 148, 255, 0.1);
+  --theme-button-hover-ink: #ffffff;
+  --theme-button-active-bg: linear-gradient(180deg, rgba(55, 148, 255, 0.28), rgba(33, 99, 177, 0.34));
+  --theme-button-active-border: rgba(78, 201, 176, 0.28);
+  --theme-button-active-ink: #ffffff;
+  --theme-status-bg: linear-gradient(180deg, rgba(37, 37, 38, 0.9), rgba(27, 27, 27, 0.94));
+  --theme-status-ink: rgba(204, 204, 204, 0.76);
+}
+
+.gantt-theme--warm {
+  --theme-frame-bg:
+    radial-gradient(circle at top left, rgba(243, 193, 120, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(72, 29, 18, 0.94), rgba(28, 14, 10, 0.9));
+  --theme-chart-bg:
+    radial-gradient(720px 300px at 18% 0%, rgba(240, 141, 73, 0.22), transparent 58%),
+    linear-gradient(180deg, #351a13 0%, #241410 100%);
+  --theme-overlay-border: rgba(243, 193, 120, 0.18);
+  --theme-hud-bg: linear-gradient(180deg, rgba(71, 26, 18, 0.96), rgba(36, 18, 12, 0.92));
+  --theme-hud-title: #f3c178;
+  --theme-overlay-ink: #fff0cf;
+  --theme-overlay-muted: rgba(255, 240, 207, 0.62);
+  --theme-toolbar-bg: linear-gradient(180deg, rgba(85, 34, 22, 0.98), rgba(39, 18, 13, 0.94));
+  --theme-button-ink: rgba(255, 236, 204, 0.76);
+  --theme-button-hover-bg: rgba(240, 141, 73, 0.14);
+  --theme-button-hover-ink: #fff8e4;
+  --theme-button-active-bg: linear-gradient(180deg, rgba(240, 141, 73, 0.34), rgba(171, 72, 46, 0.4));
+  --theme-button-active-border: rgba(243, 193, 120, 0.34);
+  --theme-button-active-ink: #fff5df;
+  --theme-status-bg: linear-gradient(180deg, rgba(76, 30, 20, 0.9), rgba(32, 17, 12, 0.94));
+  --theme-status-ink: rgba(255, 232, 194, 0.8);
+}
+
+.gantt-theme--cool {
+  --theme-frame-bg:
+    radial-gradient(circle at top left, rgba(121, 184, 215, 0.12), transparent 40%),
+    linear-gradient(135deg, rgba(18, 45, 58, 0.92), rgba(10, 23, 31, 0.9));
+  --theme-chart-bg:
+    radial-gradient(720px 300px at 18% 0%, rgba(104, 195, 212, 0.22), transparent 58%),
+    linear-gradient(180deg, #173342 0%, #0f1820 100%);
+  --theme-overlay-border: rgba(143, 231, 239, 0.16);
+  --theme-hud-bg: linear-gradient(180deg, rgba(19, 48, 60, 0.96), rgba(12, 28, 36, 0.92));
+  --theme-hud-title: #8fe7ef;
+  --theme-overlay-ink: #e6f7ff;
+  --theme-overlay-muted: rgba(230, 247, 255, 0.6);
+  --theme-toolbar-bg: linear-gradient(180deg, rgba(21, 59, 73, 0.98), rgba(12, 31, 40, 0.94));
+  --theme-button-ink: rgba(230, 247, 255, 0.76);
+  --theme-button-hover-bg: rgba(104, 195, 212, 0.12);
+  --theme-button-hover-ink: #ffffff;
+  --theme-button-active-bg: linear-gradient(180deg, rgba(79, 157, 255, 0.3), rgba(48, 111, 184, 0.38));
+  --theme-button-active-border: rgba(143, 231, 239, 0.28);
+  --theme-button-active-ink: #f4fdff;
+  --theme-status-bg: linear-gradient(180deg, rgba(20, 54, 67, 0.9), rgba(11, 25, 32, 0.94));
+  --theme-status-ink: rgba(230, 247, 255, 0.78);
+}
+
+.gantt-theme--orchid {
+  --theme-frame-bg:
+    radial-gradient(circle at top left, rgba(255, 83, 149, 0.16), transparent 40%),
+    radial-gradient(circle at top right, rgba(123, 249, 255, 0.14), transparent 42%),
+    linear-gradient(135deg, rgba(26, 7, 32, 0.92), rgba(12, 8, 24, 0.9));
+  --theme-frame-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 28px 62px rgba(20, 5, 31, 0.38);
+  --theme-chart-bg:
+    radial-gradient(760px 320px at 15% 0%, rgba(255, 93, 160, 0.2), transparent 56%),
+    radial-gradient(640px 260px at 85% 0%, rgba(123, 249, 255, 0.16), transparent 52%),
+    linear-gradient(180deg, #1a0922 0%, #120716 100%);
+  --theme-chart-shadow:
+    inset 0 0 0 1px rgba(255, 126, 182, 0.18),
+    0 26px 58px rgba(18, 4, 29, 0.42);
+  --theme-overlay-border: rgba(255, 126, 182, 0.22);
+  --theme-overlay-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  --theme-hud-bg: linear-gradient(180deg, rgba(31, 10, 38, 0.96), rgba(17, 9, 27, 0.92));
+  --theme-hud-title: #7bf9ff;
+  --theme-overlay-ink: #ffeec7;
+  --theme-overlay-muted: rgba(255, 238, 199, 0.62);
+  --theme-toolbar-bg: linear-gradient(180deg, rgba(33, 12, 43, 0.98), rgba(18, 9, 30, 0.94));
+  --theme-toolbar-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 26px rgba(0, 0, 0, 0.28);
+  --theme-button-ink: rgba(245, 231, 255, 0.74);
+  --theme-button-hover-bg: rgba(255, 126, 182, 0.1);
+  --theme-button-hover-ink: #fff8cf;
+  --theme-button-active-bg: linear-gradient(180deg, rgba(255, 92, 149, 0.38), rgba(204, 55, 131, 0.38));
+  --theme-button-active-border: rgba(255, 226, 90, 0.44);
+  --theme-button-active-ink: #fff7cf;
+  --theme-button-active-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(123, 249, 255, 0.08);
+  --theme-status-bg: linear-gradient(180deg, rgba(29, 10, 38, 0.9), rgba(15, 9, 28, 0.94));
+  --theme-status-ink: rgba(250, 236, 255, 0.76);
+}
