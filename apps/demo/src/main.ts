@@ -18,6 +18,7 @@ if (!root) {
 const appRoot = root;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REPO_URL = 'https://github.com/brandonetter/webgl2-gantt';
+const DEMO_CHART_HEIGHT_SCALE = 1.3;
 
 const PAPER_LIGHT_THEME = getDemoTheme('paper-light').className;
 
@@ -173,6 +174,10 @@ function createEditConfig(defaultMode: 'view' | 'select' | 'edit'): GanttConfig[
   };
 }
 
+function tallerDemoHeight(height: number): number {
+  return Math.round(height * DEMO_CHART_HEIGHT_SCALE);
+}
+
 function createDemoConfig(
   scene: GanttScene,
   themeId: DemoThemeId,
@@ -286,7 +291,7 @@ function createTimelineConfig(msdfManifestUrls: Record<string, string>): GanttCo
     msdfManifestUrls,
     {
     title: 'Timeline view',
-    height: 408,
+    height: tallerDemoHeight(408),
     defaultMode: 'view',
     statusText: 'View mode. Mousewheel zoom and drag to pan.',
     },
@@ -304,7 +309,7 @@ function createEditingConfig(msdfManifestUrls: Record<string, string>): GanttCon
     msdfManifestUrls,
     {
     title: 'Editing demo',
-    height: 426,
+    height: tallerDemoHeight(426),
     defaultMode: 'edit',
     statusText: 'Edit mode. Resize bars, move work, commit changes.',
     },
@@ -322,7 +327,7 @@ function createPluginConfig(msdfManifestUrls: Record<string, string>): GanttConf
     msdfManifestUrls,
     {
     title: 'Extensibility demo',
-    height: 438,
+    height: tallerDemoHeight(438),
     defaultMode: 'view',
     statusText: 'Extensions add behavior without changing the core.',
     plugins: [
